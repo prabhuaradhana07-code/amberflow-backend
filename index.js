@@ -15,7 +15,14 @@ app.use(cors({ origin: process.env.FRONTEND_URL || '*' }));
 app.use(express.json());
 
 const path = require('path');
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+const fs = require('fs');
+
+const uploadDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+app.use('/uploads', express.static(uploadDir));
 
 // Connect the routes to specific URLs
 app.use('/api/products', productRoutes);
