@@ -295,6 +295,34 @@ router.put('/:id/status', auth, async (req, res) => {
 });
 
 // ──────────────────────────────────────────────────────────────
+// GET /api/orders/vendor-orders
+// Get recent orders containing products from the vendor
+// ──────────────────────────────────────────────────────────────
+router.get('/vendor-orders', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'vendor') {
+      return res.status(403).json({ error: 'Vendor access required.' });
+    }
+
+    const result = await pool.query(
+      `SELECT o.id, o.shipping_name, o.shipping_city, o.shipping_state, o.created_at, o.status,
+              oi.quantity, oi.price as item_price, p.name as product_name
+       FROM orders o
+       JOIN order_items oi ON o.id = oi.order_id
+       JOIN products p ON oi.product_id = p.id
+       WHERE p.vendor_id = $1
+       ORDER BY o.created_at DESC`,
+      [req.user.id]
+    );
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Fetch vendor orders error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ──────────────────────────────────────────────────────────────
 // GET /api/orders/vendor-stats
 // Get insights for a vendor (protected).
 // ──────────────────────────────────────────────────────────────

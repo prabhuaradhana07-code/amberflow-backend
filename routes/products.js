@@ -15,6 +15,20 @@ router.get('/', async (req, res) => {
   }
 }); // <-- This was the missing line!
 
+const auth = require('../middleware/auth');
+const upload = require('../middleware/upload');
+
+// Get all products for the logged in vendor
+router.get('/vendor', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'vendor') return res.status(403).json({ error: 'Vendor access required' });
+    const products = await pool.query('SELECT * FROM products WHERE vendor_id = $1 ORDER BY created_at DESC', [req.user.id]);
+    res.json(products.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Get a single product by its slug
 router.get('/:slug', async (req, res) => {
   try {
@@ -27,9 +41,6 @@ router.get('/:slug', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
-const auth = require('../middleware/auth');
-const upload = require('../middleware/upload');
 
 // Create a new product (Vendor/Admin)
 router.post('/', auth, upload.single('image'), async (req, res) => {
@@ -61,6 +72,52 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
     );
     
     res.status(201).json(newProduct.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update a product (Vendor/Admin)
+router.put('/:id', auth, upload.single('image'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description, honey_type, price, weight_g, stock, image_url: provided_image_url } = req.body;
+    
+    // Check ownership or admin
+    const check = await pool.query('SELECT vendor_id FROM products WHERE id = $1', [id]);
+    if (check.rows.length === 0) return res.status(404).json({ error: 'Product not found' });
+    if (req.user.role !== 'admin' && check.rows[0].vendor_id !== req.user.id) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const slug = slugify(name, { lower: true, strict: true });
+    let image_url = provided_image_url;
+    if (req.file) image_url = '/uploads/' + req.file.filename;
+
+    const updated = await pool.query(
+      `UPDATE products 
+       SET name=$1, slug=$2, description=$3, honey_type=$4, price=$5, weight_g=$6, stock=$7, image_url=COALESCE($8, image_url), updated_at=NOW()
+       WHERE id=$9 RETURNING *`,
+      [name, slug, description, honey_type, price, weight_g, stock, image_url, id]
+    );
+    res.json(updated.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete a product (Vendor/Admin)
+router.delete('/:id', auth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const check = await pool.query('SELECT vendor_id FROM products WHERE id = $1', [id]);
+    if (check.rows.length === 0) return res.status(404).json({ error: 'Product not found' });
+    if (req.user.role !== 'admin' && check.rows[0].vendor_id !== req.user.id) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    await pool.query('DELETE FROM products WHERE id = $1', [id]);
+    res.json({ message: 'Product deleted successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
