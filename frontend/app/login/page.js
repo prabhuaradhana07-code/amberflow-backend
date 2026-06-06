@@ -56,7 +56,7 @@ function LoginContent() {
       if (res.ok && data.token) {
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
-        router.push(redirect === 'checkout' ? '/checkout' : '/');
+        window.location.href = redirect === 'checkout' ? '/checkout' : '/';
       } else {
         setError(data.error || 'Invalid credentials');
       }
@@ -89,7 +89,7 @@ function LoginContent() {
       if (res.ok && data.token) {
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
-        router.push(redirect === 'checkout' ? '/checkout' : '/');
+        window.location.href = redirect === 'checkout' ? '/checkout' : '/';
       } else {
         setError(data.error || 'Registration failed');
       }
