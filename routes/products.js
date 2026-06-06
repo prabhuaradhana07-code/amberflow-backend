@@ -2,14 +2,21 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db');
 const slugify = require('slugify');
+const NodeCache = require('node-cache');
+const productCache = new NodeCache({ stdTTL: 60 }); // Cache for 60 seconds
 
 // Get all active products
 router.get('/', async (req, res) => {
   try {
+    const cachedProducts = productCache.get('all_active_products');
+    if (cachedProducts) {
+      return res.json(cachedProducts);
+    }
+    
     const products = await pool.query('SELECT * FROM products WHERE is_active = true ORDER BY created_at DESC');
+    productCache.set('all_active_products', products.rows);
     res.json(products.rows);
   } catch (err) {
-    // THIS LINE forces the real error to print in your backend terminal
     console.error('CRITICAL DATABASE ERROR:', err); 
     res.status(500).json({ error: err.message || 'Database connection failed' });
   }
@@ -32,10 +39,15 @@ router.get('/vendor', auth, async (req, res) => {
 // Get a single product by its slug
 router.get('/:slug', async (req, res) => {
   try {
+    const cacheKey = `product_slug_${req.params.slug}`;
+    const cachedProduct = productCache.get(cacheKey);
+    if (cachedProduct) return res.json(cachedProduct);
+
     const product = await pool.query('SELECT * FROM products WHERE slug = $1', [req.params.slug]);
     if (product.rows.length === 0) {
       return res.status(404).json({ error: 'Product not found' });
     }
+    productCache.set(cacheKey, product.rows[0]);
     res.json(product.rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -71,6 +83,7 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
       [name, slug, description, honey_type, price, weight_g, stock, image_url, vendor_id]
     );
     
+    productCache.flushAll(); // Invalidate all cached endpoints
     res.status(201).json(newProduct.rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -100,6 +113,8 @@ router.put('/:id', auth, upload.single('image'), async (req, res) => {
        WHERE id=$9 RETURNING *`,
       [name, slug, description, honey_type, price, weight_g, stock, image_url, id]
     );
+    
+    productCache.flushAll(); // Invalidate all cached endpoints
     res.json(updated.rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -117,6 +132,8 @@ router.delete('/:id', auth, async (req, res) => {
     }
 
     await pool.query('DELETE FROM products WHERE id = $1', [id]);
+    
+    productCache.flushAll(); // Invalidate all cached endpoints
     res.json({ message: 'Product deleted successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });

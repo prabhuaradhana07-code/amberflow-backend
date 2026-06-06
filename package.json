@@ -17,6 +17,7 @@
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.1.1",
+    "node-cache": "^5.1.2",
     "nodemailer": "^8.0.10",
     "pg": "^8.21.0",
     "slugify": "^1.6.9"
