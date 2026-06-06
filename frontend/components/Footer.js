@@ -42,6 +42,7 @@ export default function Footer() {
                 { href: '/cart', label: 'Shopping Cart' },
                 { href: '/login', label: 'Sign In' },
                 { href: '/dashboard', label: 'My Dashboard' },
+                { href: '/vendor/register', label: 'Become a Vendor' },
               ].map((link) => (
                 <li key={link.href}>
                   <Link

@@ -75,6 +75,10 @@ export default function Navbar() {
     navLinks.push({ href: '/admin', label: 'Admin Panel' });
   }
 
+  if (user && user.role === 'vendor') {
+    navLinks.push({ href: '/vendor/dashboard', label: 'Vendor Panel' });
+  }
+
   return (
     <>
       <nav
