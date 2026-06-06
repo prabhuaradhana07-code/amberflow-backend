@@ -3,6 +3,8 @@ const router = express.Router();
 const pool = require('../db');
 const auth = require('../middleware/auth');
 const { sendOrderConfirmation, sendOrderStatusUpdate } = require('../utils/email');
+const fs = require('fs');
+const path = require('path');
 
 // Delivery partners for random assignment
 const DELIVERY_PARTNERS = ['BlueDart Express', 'Delhivery', 'DTDC', 'India Post'];
@@ -137,6 +139,24 @@ router.post('/', auth, async (req, res) => {
         ...order,
         items: insertedItems,
       }).catch((e) => console.error('Order confirmation email error:', e));
+    }
+
+    // Backup order to CSV for data safety
+    try {
+      const backupPath = path.join(__dirname, '../backup_orders.csv');
+      if (!fs.existsSync(backupPath)) {
+        fs.writeFileSync(backupPath, 'OrderID,UserID,CustomerName,Phone,Address,City,State,Total,UPI_Ref,Date,Items\n');
+      }
+      const itemsStr = insertedItems.map(i => `${i.quantity}x PID:${i.product_id}`).join(' | ').replace(/"/g, '""');
+      const nameSafe = (order.shipping_name || '').replace(/"/g, '""');
+      const addressSafe = (order.shipping_address || '').replace(/"/g, '""');
+      const citySafe = (order.shipping_city || '').replace(/"/g, '""');
+      const stateSafe = (order.shipping_state || '').replace(/"/g, '""');
+      
+      const csvLine = `${order.id},${order.user_id},"${nameSafe}",${order.shipping_phone || ''},"${addressSafe}","${citySafe}","${stateSafe}",${order.total},${order.upi_ref || ''},${new Date().toISOString()},"${itemsStr}"\n`;
+      fs.appendFileSync(backupPath, csvLine);
+    } catch (backupErr) {
+      console.error('Failed to backup order to CSV:', backupErr);
     }
 
     res.status(201).json({ order, items: insertedItems });
