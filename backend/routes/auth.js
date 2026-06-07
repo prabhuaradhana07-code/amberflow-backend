@@ -130,7 +130,7 @@ router.post('/forgot-password', async (req, res) => {
     );
 
     // Send the code via email
-    await sendPasswordResetCode(email, code);
+    sendPasswordResetCode(email, code).catch(e => console.error('Forgot password email error:', e));
 
     res.json({ message: 'If that email is registered, a reset code has been sent.' });
   } catch (err) {
