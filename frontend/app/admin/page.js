@@ -42,10 +42,10 @@ export default function AdminDashboardPage() {
     }
 
     Promise.all([
-      fetch(`${API_URL}/api/orders/all`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' }).then(r => r.json()),
-      fetch(`${API_URL}/api/auth/vendors`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' }).then(r => r.json()),
-      fetch(`${API_URL}/api/products`, { cache: 'no-store' }).then(r => r.json()),
-      fetch(`${API_URL}/api/auth/users`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' }).then(r => r.json())
+      fetch(`${API_URL}/api/orders/all`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' }).then(r => r.ok ? r.json() : []).catch(() => []),
+      fetch(`${API_URL}/api/auth/vendors`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' }).then(r => r.ok ? r.json() : []).catch(() => []),
+      fetch(`${API_URL}/api/products`, { cache: 'no-store' }).then(r => r.ok ? r.json() : []).catch(() => []),
+      fetch(`${API_URL}/api/auth/users`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' }).then(r => r.ok ? r.json() : []).catch(() => [])
     ])
     .then(([ordersData, vendorsData, productsData, usersData]) => {
       setOrders(Array.isArray(ordersData) ? ordersData : []);
