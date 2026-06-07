@@ -313,6 +313,30 @@ router.get('/vendors', auth, async (req, res) => {
 });
 
 // ──────────────────────────────────────────────────────────────
+// GET /api/auth/users (Admin Only)
+// Fetch registered customers and their order activity
+// ──────────────────────────────────────────────────────────────
+router.get('/users', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+    
+    const result = await pool.query(`
+      SELECT u.id, u.name, u.email, u.phone, u.city, u.state, u.created_at,
+             COUNT(o.id) as total_orders,
+             COALESCE(SUM(o.total), 0) as total_spent
+      FROM users u
+      LEFT JOIN orders o ON u.id = o.user_id
+      WHERE u.role = 'customer'
+      GROUP BY u.id
+      ORDER BY u.created_at DESC
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ──────────────────────────────────────────────────────────────
 // PUT /api/auth/vendors/:id/approve (Admin Only)
 // ──────────────────────────────────────────────────────────────
 router.put('/vendors/:id/approve', auth, async (req, res) => {

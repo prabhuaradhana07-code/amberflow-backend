@@ -21,6 +21,7 @@ export default function AdminDashboardPage() {
   const [orders, setOrders] = useState([]);
   const [vendors, setVendors] = useState([]);
   const [products, setProducts] = useState([]);
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(null);
   const [activeTab, setActiveTab] = useState('orders');
@@ -43,12 +44,14 @@ export default function AdminDashboardPage() {
     Promise.all([
       fetch(`${API_URL}/api/orders/all`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' }).then(r => r.json()),
       fetch(`${API_URL}/api/auth/vendors`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' }).then(r => r.json()),
-      fetch(`${API_URL}/api/products`, { cache: 'no-store' }).then(r => r.json())
+      fetch(`${API_URL}/api/products`, { cache: 'no-store' }).then(r => r.json()),
+      fetch(`${API_URL}/api/auth/users`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' }).then(r => r.json())
     ])
-    .then(([ordersData, vendorsData, productsData]) => {
+    .then(([ordersData, vendorsData, productsData, usersData]) => {
       setOrders(Array.isArray(ordersData) ? ordersData : []);
       setVendors(Array.isArray(vendorsData) ? vendorsData : []);
       setProducts(Array.isArray(productsData) ? productsData : []);
+      setUsers(Array.isArray(usersData) ? usersData : []);
     })
     .catch(err => {
       showToast('Failed to fetch admin data.', 'error');
@@ -249,6 +252,14 @@ export default function AdminDashboardPage() {
           >
             🍯 Manage Products
           </button>
+          <button
+            onClick={() => setActiveTab('users')}
+            className={`px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 ${
+              activeTab === 'users' ? 'bg-amber-600 text-white shadow-lg shadow-amber-200/50' : 'bg-white text-gray-600 hover:bg-amber-50 border border-amber-100'
+            }`}
+          >
+            👥 Customers
+          </button>
         </div>
 
         {activeTab === 'orders' && (
@@ -435,6 +446,54 @@ export default function AdminDashboardPage() {
                           >
                             Delete Product
                           </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'users' && (
+          <div className="bg-white rounded-2xl shadow-xl border border-amber-100 overflow-hidden">
+            <div className="p-6 md:p-8 border-b border-amber-100 flex justify-between items-center">
+              <h2 className="text-2xl font-bold text-gray-900">Registered Customers</h2>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-amber-50/50 text-amber-900 text-sm uppercase tracking-wide">
+                    <th className="p-4 font-bold border-b border-amber-100">Customer</th>
+                    <th className="p-4 font-bold border-b border-amber-100">Location</th>
+                    <th className="p-4 font-bold border-b border-amber-100">Registered On</th>
+                    <th className="p-4 font-bold border-b border-amber-100">Total Orders</th>
+                    <th className="p-4 font-bold border-b border-amber-100">Total Spent</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-amber-100">
+                  {users.length === 0 ? (
+                    <tr><td colSpan="5" className="p-8 text-center text-gray-500">No customers registered yet.</td></tr>
+                  ) : (
+                    users.map((u) => (
+                      <tr key={u.id} className="hover:bg-amber-50/30 transition-colors">
+                        <td className="p-4">
+                          <p className="font-bold text-gray-900">{u.name}</p>
+                          <p className="text-xs text-gray-500">{u.email}</p>
+                          <p className="text-xs text-gray-500">{u.phone || 'No phone'}</p>
+                        </td>
+                        <td className="p-4">
+                          <p className="text-sm text-gray-700">{(u.city || u.state) ? `${u.city || ''}, ${u.state || ''}` : 'Unknown'}</p>
+                        </td>
+                        <td className="p-4 text-sm text-gray-600">
+                          {new Date(u.created_at).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </td>
+                        <td className="p-4">
+                          <span className="bg-amber-100 text-amber-800 text-xs font-bold px-3 py-1 rounded-full">{u.total_orders}</span>
+                        </td>
+                        <td className="p-4">
+                          <p className="font-bold text-green-700">₹{parseFloat(u.total_spent).toFixed(0)}</p>
                         </td>
                       </tr>
                     ))
