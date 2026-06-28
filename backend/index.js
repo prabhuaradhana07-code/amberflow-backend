@@ -23,7 +23,13 @@ app.use(cors({
     ];
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.amberflow.in')) {
+    
+    // Check strict match or wildcard matches for amberflow and railway
+    if (
+      allowedOrigins.indexOf(origin) !== -1 || 
+      origin.endsWith('.amberflow.in') ||
+      origin.endsWith('.up.railway.app')
+    ) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
