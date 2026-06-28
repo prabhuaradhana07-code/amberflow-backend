@@ -65,7 +65,6 @@ export default function CheckoutPage() {
     if (!validate()) return;
     setLoading(true);
     setError('');
-    const token = localStorage.getItem('token');
     const items = cart.map((i) => ({
       product_id: i.id,
       quantity: i.quantity,
@@ -75,9 +74,9 @@ export default function CheckoutPage() {
     try {
       const res = await fetch(`${API_URL}/api/orders`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           items,

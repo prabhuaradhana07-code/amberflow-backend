@@ -22,14 +22,14 @@ export default function OrderTrackingPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
+    const user = localStorage.getItem('user');
+    if (!user) {
       router.push('/login');
       return;
     }
 
     fetch(`${API_URL}/api/orders/${id}`, {
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: 'include',
       cache: 'no-store',
     })
       .then((r) => {

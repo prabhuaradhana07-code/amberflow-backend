@@ -28,8 +28,8 @@ function LoginContent() {
 
   // Check if already logged in
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
+    const user = localStorage.getItem('user');
+    if (user) {
       router.push(redirect === 'checkout' ? '/checkout' : '/');
     }
   }, [router, redirect]);
@@ -50,11 +50,11 @@ function LoginContent() {
       const res = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ email: form.email, password: form.password }),
       });
       const data = await res.json();
-      if (res.ok && data.token) {
-        localStorage.setItem('token', data.token);
+      if (res.ok && data.user) {
         localStorage.setItem('user', JSON.stringify(data.user));
         window.location.href = redirect === 'checkout' ? '/checkout' : '/';
       } else {
@@ -77,6 +77,7 @@ function LoginContent() {
       const res = await fetch(`${API_URL}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           name: form.name,
           email: form.email,
@@ -86,8 +87,7 @@ function LoginContent() {
         }),
       });
       const data = await res.json();
-      if (res.ok && data.token) {
-        localStorage.setItem('token', data.token);
+      if (res.ok && data.user) {
         localStorage.setItem('user', JSON.stringify(data.user));
         window.location.href = redirect === 'checkout' ? '/checkout' : '/';
       } else {

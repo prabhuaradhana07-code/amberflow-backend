@@ -39,7 +39,14 @@ router.post('/register', async (req, res) => {
       { expiresIn: '7d' }
     );
 
-    res.json({ token, user: newUser.rows[0] });
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    res.json({ user: newUser.rows[0] });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -71,8 +78,14 @@ router.post('/login', async (req, res) => {
       { expiresIn: '7d' }
     );
 
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
     res.json({
-      token,
       user: {
         id: user.rows[0].id,
         name: user.rows[0].name,
@@ -86,6 +99,34 @@ router.post('/login', async (req, res) => {
         is_approved_vendor: user.rows[0].is_approved_vendor,
       },
     });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ──────────────────────────────────────────────────────────────
+// POST /api/auth/logout
+// Clears the HttpOnly token cookie
+// ──────────────────────────────────────────────────────────────
+router.post('/logout', (req, res) => {
+  res.clearCookie('token');
+  res.json({ message: 'Logged out successfully' });
+});
+
+// ──────────────────────────────────────────────────────────────
+// GET /api/auth/me
+// Returns the currently authenticated user based on HttpOnly cookie
+// ──────────────────────────────────────────────────────────────
+router.get('/me', auth, async (req, res) => {
+  try {
+    const user = await pool.query(
+      'SELECT id, name, email, role, phone, address, city, state, pincode, is_approved_vendor FROM users WHERE id = $1',
+      [req.user.id]
+    );
+    if (user.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.json({ user: user.rows[0] });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

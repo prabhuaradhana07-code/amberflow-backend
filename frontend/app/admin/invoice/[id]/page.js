@@ -12,14 +12,14 @@ export default function InvoicePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
+    const userStr = localStorage.getItem('user');
+    if (!userStr) {
       router.push('/login');
       return;
     }
 
     fetch(`${API_URL}/api/orders/${params.id}`, {
-      headers: { Authorization: `Bearer ${token}` }
+      credentials: 'include'
     })
     .then(r => r.json())
     .then(resData => {

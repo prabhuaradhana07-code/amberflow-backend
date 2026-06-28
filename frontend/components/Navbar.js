@@ -11,7 +11,7 @@ export default function Navbar() {
   const [prevCount, setPrevCount] = useState(0);
   const [badgeAnimate, setBadgeAnimate] = useState(false);
 
-  // Load user from localStorage
+  // Load user from localStorage and verify with backend
   useEffect(() => {
     try {
       const saved = localStorage.getItem('user');
@@ -19,6 +19,25 @@ export default function Navbar() {
     } catch (e) {
       console.warn('Failed to load user:', e);
     }
+
+    // Verify with backend to prevent UI spoofing via localStorage
+    const verifyUser = async () => {
+      try {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        const res = await fetch(`${API_URL}/api/auth/me`, { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          setUser(data.user);
+          localStorage.setItem('user', JSON.stringify(data.user));
+        } else {
+          setUser(null);
+          localStorage.removeItem('user');
+        }
+      } catch (err) {
+        console.error('Failed to verify user', err);
+      }
+    };
+    verifyUser();
 
     const handleStorage = () => {
       try {
@@ -57,9 +76,14 @@ export default function Navbar() {
     setIsMenuOpen(false);
   }, []);
 
-  const handleLogout = useCallback(() => {
+  const handleLogout = useCallback(async () => {
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      await fetch(`${API_URL}/api/auth/logout`, { method: 'POST', credentials: 'include' });
+    } catch (e) {
+      console.error('Logout failed:', e);
+    }
     localStorage.removeItem('user');
-    localStorage.removeItem('token');
     setUser(null);
     setIsMenuOpen(false);
     window.location.href = '/';

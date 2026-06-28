@@ -24,8 +24,7 @@ export default function VendorDashboardPage() {
   useEffect(() => {
     const fetchUserAndStats = async () => {
       const u = localStorage.getItem('user');
-      const token = localStorage.getItem('token');
-      if (!u || !token) {
+      if (!u) {
         router.push('/login');
         return;
       }
@@ -39,16 +38,16 @@ export default function VendorDashboardPage() {
       // Fetch fresh profile to get approval status
       try {
         const profRes = await fetch(`${API_URL}/api/auth/profile`, {
-          headers: { Authorization: `Bearer ${token}` }
+          credentials: 'include'
         });
         const profData = await profRes.json();
         setUser(profData);
         
         if (profData.is_approved_vendor) {
           const [statRes, prodRes, ordRes] = await Promise.all([
-            fetch(`${API_URL}/api/orders/vendor-stats`, { headers: { Authorization: `Bearer ${token}` } }),
-            fetch(`${API_URL}/api/products/vendor`, { headers: { Authorization: `Bearer ${token}` } }),
-            fetch(`${API_URL}/api/orders/vendor-orders`, { headers: { Authorization: `Bearer ${token}` } })
+            fetch(`${API_URL}/api/orders/vendor-stats`, { credentials: 'include' }),
+            fetch(`${API_URL}/api/products/vendor`, { credentials: 'include' }),
+            fetch(`${API_URL}/api/orders/vendor-orders`, { credentials: 'include' })
           ]);
           const statData = await statRes.json();
           const prodData = await prodRes.json();
@@ -68,7 +67,6 @@ export default function VendorDashboardPage() {
   const handleAddProduct = async (e) => {
     e.preventDefault();
     setAddingProduct(true);
-    const token = localStorage.getItem('token');
     
     const fd = new FormData();
     Object.keys(productForm).forEach(k => fd.append(k, productForm[k]));
@@ -77,7 +75,7 @@ export default function VendorDashboardPage() {
     try {
       const res = await fetch(`${API_URL}/api/products`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
         body: fd
       });
       if (res.ok) {
@@ -98,11 +96,10 @@ export default function VendorDashboardPage() {
 
   const handleDeleteProduct = async (id) => {
     if (!confirm('Are you sure you want to delete this product?')) return;
-    const token = localStorage.getItem('token');
     try {
       const res = await fetch(`${API_URL}/api/products/${id}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       });
       if (res.ok) {
         setProducts(prev => prev.filter(p => p.id !== id));

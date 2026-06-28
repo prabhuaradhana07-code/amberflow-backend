@@ -28,9 +28,8 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     const userStr = localStorage.getItem('user');
-    const token = localStorage.getItem('token');
     
-    if (!userStr || !token) {
+    if (!userStr) {
       router.push('/login');
       return;
     }
@@ -42,10 +41,10 @@ export default function AdminDashboardPage() {
     }
 
     Promise.all([
-      fetch(`${API_URL}/api/orders/all`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' }).then(r => r.ok ? r.json() : []).catch(() => []),
-      fetch(`${API_URL}/api/auth/vendors`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' }).then(r => r.ok ? r.json() : []).catch(() => []),
+      fetch(`${API_URL}/api/orders/all`, { credentials: 'include', cache: 'no-store' }).then(r => r.ok ? r.json() : []).catch(() => []),
+      fetch(`${API_URL}/api/auth/vendors`, { credentials: 'include', cache: 'no-store' }).then(r => r.ok ? r.json() : []).catch(() => []),
       fetch(`${API_URL}/api/products`, { cache: 'no-store' }).then(r => r.ok ? r.json() : []).catch(() => []),
-      fetch(`${API_URL}/api/auth/users`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' }).then(r => r.ok ? r.json() : []).catch(() => [])
+      fetch(`${API_URL}/api/auth/users`, { credentials: 'include', cache: 'no-store' }).then(r => r.ok ? r.json() : []).catch(() => [])
     ])
     .then(([ordersData, vendorsData, productsData, usersData]) => {
       setOrders(Array.isArray(ordersData) ? ordersData : []);
@@ -63,13 +62,12 @@ export default function AdminDashboardPage() {
 
   const handleUpdateStatus = async (orderId, newStatus) => {
     setUpdating(orderId);
-    const token = localStorage.getItem('token');
     try {
       const res = await fetch(`${API_URL}/api/orders/${orderId}/status`, {
         method: 'PUT',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ status: newStatus }),
       });
@@ -87,13 +85,12 @@ export default function AdminDashboardPage() {
   };
 
   const handleApproveVendor = async (vendorId) => {
-    const token = localStorage.getItem('token');
     try {
       const res = await fetch(`${API_URL}/api/auth/vendors/${vendorId}/approve`, {
         method: 'PUT',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ is_approved_vendor: true }),
       });
@@ -111,11 +108,10 @@ export default function AdminDashboardPage() {
 
   const handleDeleteProduct = async (id) => {
     if (!confirm('Are you sure you want to delete this product?')) return;
-    const token = localStorage.getItem('token');
     try {
       const res = await fetch(`${API_URL}/api/products/${id}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       });
       if (res.ok) {
         setProducts((prev) => prev.filter((p) => p.id !== id));

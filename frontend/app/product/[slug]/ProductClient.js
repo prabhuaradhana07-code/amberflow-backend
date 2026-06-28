@@ -109,13 +109,12 @@ export default function ProductPage() {
     e.preventDefault();
     if (!reviewForm.comment.trim()) return;
     setSubmittingReview(true);
-    const token = localStorage.getItem('token');
     try {
       const res = await fetch(`${API_URL}/api/reviews`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           product_id: product.id,

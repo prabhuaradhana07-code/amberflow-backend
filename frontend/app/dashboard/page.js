@@ -31,16 +31,15 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const u = localStorage.getItem('user');
-    const token = localStorage.getItem('token');
-    if (!u || !token) {
+    if (!u) {
       router.push('/login');
       return;
     }
     setUser(JSON.parse(u));
 
     Promise.all([
-      fetch(`${API_URL}/api/auth/profile`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' }).then(r => r.json()),
-      fetch(`${API_URL}/api/orders`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' }).then(r => r.json())
+      fetch(`${API_URL}/api/auth/profile`, { credentials: 'include', cache: 'no-store' }).then(r => r.json()),
+      fetch(`${API_URL}/api/orders`, { credentials: 'include', cache: 'no-store' }).then(r => r.json())
     ]).then(([profileData, ordersData]) => {
       setProfile(profileData);
       setEditForm({
@@ -58,11 +57,11 @@ export default function DashboardPage() {
 
   const handleSaveProfile = async () => {
     setSaving(true);
-    const token = localStorage.getItem('token');
     try {
       const res = await fetch(`${API_URL}/api/auth/profile`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editForm),
       });
       if (res.ok) {
@@ -78,7 +77,6 @@ export default function DashboardPage() {
 
   const handleSubmitReview = async (e) => {
     e.preventDefault();
-    const token = localStorage.getItem('token');
     const fd = new FormData();
     fd.append('rating', reviewForm.rating);
     fd.append('comment', reviewForm.comment);
@@ -90,7 +88,7 @@ export default function DashboardPage() {
     try {
       const res = await fetch(`${API_URL}/api/reviews`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
         body: fd
       });
       if (res.ok) {
