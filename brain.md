@@ -9,7 +9,7 @@ This document serves as the overarching context and architecture guide for the *
 - **Database:** PostgreSQL (using `pg` pool).
 - **Authentication:** JWT (JSON Web Tokens) with Bcrypt password hashing.
 - **Hosting / Deployment:**
-  - **Frontend:** Vercel (Custom Domain: `amberflow.in`)
+  - **Frontend:** Railway (Custom Domain: `amberflow.in`)
   - **Backend:** Railway (PostgreSQL + Node.js server)
   - **File Storage:** Local disk storage via `multer` (served via `/uploads` static route on the backend).
 

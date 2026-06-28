@@ -113,7 +113,7 @@ export default function Navbar() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="relative px-4 py-2 text-sm font-medium text-amber-900/80 hover:text-amber-700 rounded-lg hover:bg-amber-100/60 transition-all duration-200"
+                  className="relative px-4 py-2 text-sm font-medium text-amber-100/80 hover:text-amber-400 rounded-lg hover:bg-white/5 transition-all duration-200"
                 >
                   <span className="flex items-center gap-1.5">
                     {link.label}
@@ -131,15 +131,15 @@ export default function Navbar() {
               ))}
 
               {/* Auth Section */}
-              <div className="ml-2 pl-3 border-l border-amber-200/60 flex items-center gap-2">
+              <div className="ml-2 pl-3 border-l border-white/10 flex items-center gap-2">
                 {user ? (
                   <>
-                    <span className="text-sm text-amber-700/70 hidden lg:inline">
-                      Hi, <span className="font-semibold text-amber-800">{user.name || user.email}</span>
+                    <span className="text-sm text-amber-100/60 hidden lg:inline">
+                      Hi, <span className="font-semibold text-amber-400">{user.name || user.email}</span>
                     </span>
                     <button
                       onClick={handleLogout}
-                      className="px-3 py-1.5 text-sm font-medium text-amber-700 hover:text-white hover:bg-amber-600 rounded-lg border border-amber-300 hover:border-amber-600 transition-all duration-200 cursor-pointer"
+                      className="px-3 py-1.5 text-sm font-medium text-amber-400 hover:text-black hover:bg-amber-500 rounded-lg border border-amber-500/50 hover:border-amber-500 transition-all duration-200 cursor-pointer"
                     >
                       Logout
                     </button>
@@ -158,23 +158,23 @@ export default function Navbar() {
             {/* Mobile Menu Button */}
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="md:hidden relative w-10 h-10 flex items-center justify-center rounded-lg hover:bg-amber-100/60 transition-colors cursor-pointer"
+              className="md:hidden relative w-10 h-10 flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
               aria-label="Toggle menu"
               aria-expanded={isMenuOpen}
             >
               <div className="w-5 h-4 flex flex-col justify-between">
                 <span
-                  className={`block h-0.5 bg-amber-800 rounded-full transition-all duration-300 origin-center ${
+                  className={`block h-0.5 bg-amber-400 rounded-full transition-all duration-300 origin-center ${
                     isMenuOpen ? 'rotate-45 translate-y-[7px]' : ''
                   }`}
                 />
                 <span
-                  className={`block h-0.5 bg-amber-800 rounded-full transition-all duration-300 ${
+                  className={`block h-0.5 bg-amber-400 rounded-full transition-all duration-300 ${
                     isMenuOpen ? 'opacity-0 scale-x-0' : ''
                   }`}
                 />
                 <span
-                  className={`block h-0.5 bg-amber-800 rounded-full transition-all duration-300 origin-center ${
+                  className={`block h-0.5 bg-amber-400 rounded-full transition-all duration-300 origin-center ${
                     isMenuOpen ? '-rotate-45 -translate-y-[7px]' : ''
                   }`}
                 />
@@ -194,16 +194,16 @@ export default function Navbar() {
 
       {/* Mobile Drawer */}
       <div
-        className={`fixed top-0 right-0 h-full w-72 bg-white/95 backdrop-blur-xl shadow-2xl z-40 transform transition-transform duration-300 ease-out md:hidden ${
+        className={`fixed top-0 right-0 h-full w-72 bg-[#0a0a0a]/95 backdrop-blur-xl border-l border-white/10 shadow-2xl z-40 transform transition-transform duration-300 ease-out md:hidden ${
           isMenuOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
         <div className="flex flex-col h-full pt-20 pb-8 px-6">
           {/* User info in mobile */}
           {user && (
-            <div className="mb-6 pb-4 border-b border-amber-100">
-              <p className="text-xs text-amber-600 uppercase tracking-wider font-medium">Welcome back</p>
-              <p className="text-lg font-semibold text-amber-900 mt-0.5">{user.name || user.email}</p>
+            <div className="mb-6 pb-4 border-b border-white/10">
+              <p className="text-xs text-amber-500 uppercase tracking-wider font-medium">Welcome back</p>
+              <p className="text-lg font-semibold text-white mt-0.5">{user.name || user.email}</p>
             </div>
           )}
 
@@ -214,11 +214,11 @@ export default function Navbar() {
                 key={link.href}
                 href={link.href}
                 onClick={() => setIsMenuOpen(false)}
-                className="flex items-center justify-between px-4 py-3 text-amber-900/80 hover:text-amber-700 hover:bg-amber-50 rounded-xl transition-all duration-200 font-medium"
+                className="flex items-center justify-between px-4 py-3 text-amber-100/80 hover:text-amber-400 hover:bg-white/5 rounded-xl transition-all duration-200 font-medium"
               >
                 <span>{link.label}</span>
                 {link.badge > 0 && (
-                  <span className="inline-flex items-center justify-center min-w-[22px] h-6 px-2 text-xs font-bold text-white bg-amber-500 rounded-full">
+                  <span className="inline-flex items-center justify-center min-w-[22px] h-6 px-2 text-xs font-bold text-black bg-amber-500 rounded-full">
                     {link.badge}
                   </span>
                 )}
@@ -227,11 +227,11 @@ export default function Navbar() {
           </nav>
 
           {/* Mobile Auth */}
-          <div className="pt-4 border-t border-amber-100">
+          <div className="pt-4 border-t border-white/10">
             {user ? (
               <button
                 onClick={handleLogout}
-                className="w-full px-4 py-3 text-sm font-semibold text-amber-700 border border-amber-300 rounded-xl hover:bg-amber-50 transition-colors cursor-pointer"
+                className="block w-full text-center px-4 py-3 text-sm font-semibold text-amber-400 hover:bg-white/5 rounded-xl transition-all duration-200"
               >
                 Logout
               </button>

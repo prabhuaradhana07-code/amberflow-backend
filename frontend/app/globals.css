@@ -781,27 +781,50 @@ textarea:focus-visible {
   }
 }
 
-/* ─── Glassmorphism & Luxury Utilities ───────────────────── */
+/* ─── Premium Dark Luxury & Glassmorphism Utilities ──────── */
+
+.mesh-bg {
+  background-color: #050505;
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(120, 53, 15, 0.4) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(69, 26, 3, 0.6) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(217, 119, 6, 0.15) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, rgba(30, 30, 30, 0.8) 0px, transparent 50%);
+  background-size: 200% 200%;
+  animation: meshFlow 15s ease infinite;
+}
+
+@keyframes meshFlow {
+  0% { background-position: 0% 0%; }
+  50% { background-position: 100% 100%; }
+  100% { background-position: 0% 0%; }
+}
 
 .glass-panel {
-  background: rgba(255, 255, 255, 0.4);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.05);
+  background: rgba(15, 15, 15, 0.65);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  box-shadow: 0 10px 40px 0 rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
 }
 
 .glass-card {
-  background: rgba(255, 255, 255, 0.6);
+  background: rgba(20, 20, 20, 0.5);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.7);
-  box-shadow: 0 4px 24px 0 rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.15);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.glass-card:hover {
+  background: rgba(30, 30, 30, 0.65);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  box-shadow: 0 12px 48px 0 rgba(245, 158, 11, 0.15);
 }
 
 .glass-amber {
-  background: rgba(255, 251, 235, 0.65); /* amber-50 */
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border-bottom: 1px solid rgba(253, 230, 138, 0.5); /* amber-200 */
+  background: rgba(10, 10, 10, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(245, 158, 11, 0.25);
 }

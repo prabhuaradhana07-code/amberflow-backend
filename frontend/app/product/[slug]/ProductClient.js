@@ -164,15 +164,15 @@ export default function ProductPage() {
     : null;
 
   return (
-    <div className="bg-[#FFFAEF] min-h-screen pb-20">
+    <div className="min-h-screen pb-20">
       {/* ─── Breadcrumb ─── */}
       <div className="max-w-6xl mx-auto px-6 pt-6">
-        <nav className="flex items-center gap-2 text-sm text-gray-500">
-          <Link href="/" className="hover:text-amber-600 transition-colors">Home</Link>
+        <nav className="flex items-center gap-2 text-sm text-gray-400">
+          <Link href="/" className="hover:text-amber-400 transition-colors">Home</Link>
           <span>/</span>
-          <Link href="/#shop" className="hover:text-amber-600 transition-colors">Shop</Link>
+          <Link href="/#shop" className="hover:text-amber-400 transition-colors">Shop</Link>
           <span>/</span>
-          <span className="text-amber-800 font-medium">{product.name}</span>
+          <span className="text-white font-medium">{product.name}</span>
         </nav>
       </div>
 
@@ -181,7 +181,7 @@ export default function ProductPage() {
         <div className="glass-card rounded-[2rem] shadow-xl overflow-hidden">
           <div className="flex flex-col lg:flex-row">
             {/* Left: Image */}
-            <div className="lg:w-1/2 relative bg-gradient-to-br from-amber-50 via-amber-100 to-amber-50 min-h-[400px] lg:min-h-[600px]">
+            <div className="lg:w-1/2 relative bg-gradient-to-br from-neutral-900 to-neutral-800 min-h-[400px] lg:min-h-[600px]">
               <Image
                 src={imageUrl}
                 alt={product.name}
@@ -201,53 +201,53 @@ export default function ProductPage() {
             {/* Right: Details */}
             <div className="lg:w-1/2 p-8 md:p-12 flex flex-col justify-center">
               {product.honey_type && (
-                <span className="inline-block text-xs font-black text-amber-600 uppercase tracking-[0.2em] mb-3">
+                <span className="inline-block text-xs font-black text-amber-500 uppercase tracking-[0.2em] mb-3">
                   {product.honey_type.replace(/_/g, ' ')} Honey
                 </span>
               )}
 
-              <h1 className="text-3xl md:text-4xl lg:text-5xl font-serif font-bold text-gray-900 mb-4 leading-tight">
+              <h1 className="text-3xl md:text-4xl lg:text-5xl font-serif font-bold text-white mb-4 leading-tight">
                 {product.name}
               </h1>
 
               {avgRating && (
                 <div className="flex items-center gap-2 mb-4">
                   <StarDisplay rating={Math.round(Number(avgRating))} />
-                  <span className="text-sm text-gray-500">
+                  <span className="text-sm text-gray-400">
                     {avgRating} ({reviews.length} {reviews.length === 1 ? 'review' : 'reviews'})
                   </span>
                 </div>
               )}
 
-              <p className="text-gray-600 mb-8 leading-relaxed text-base">
+              <p className="text-gray-300 mb-8 leading-relaxed text-base">
                 {product.description}
               </p>
 
-              <div className="flex items-end gap-4 mb-8 pb-8 border-b border-amber-100">
-                <span className="text-4xl md:text-5xl font-black text-amber-900">
+              <div className="flex items-end gap-4 mb-8 pb-8 border-b border-white/10">
+                <span className="text-4xl md:text-5xl font-black text-amber-400">
                   ₹{product.price}
                 </span>
-                <span className="text-lg text-gray-400 mb-1 font-medium">
+                <span className="text-lg text-gray-500 mb-1 font-medium">
                   / {product.weight_g}g
                 </span>
               </div>
 
               {/* Quantity Selector */}
               <div className="flex items-center gap-5 mb-8">
-                <label className="font-semibold text-gray-700">Quantity:</label>
-                <div className="flex items-center border-2 border-amber-200 rounded-2xl overflow-hidden">
+                <label className="font-semibold text-gray-300">Quantity:</label>
+                <div className="flex items-center border border-white/20 rounded-2xl overflow-hidden">
                   <button
                     onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                    className="w-12 h-12 bg-amber-50 hover:bg-amber-100 font-bold text-lg transition-colors flex items-center justify-center"
+                    className="w-12 h-12 bg-[#1a1a1a] hover:bg-[#2a2a2a] text-white font-bold text-lg transition-colors flex items-center justify-center"
                   >
                     −
                   </button>
-                  <span className="w-14 h-12 flex items-center justify-center font-bold text-lg bg-white">
+                  <span className="w-14 h-12 flex items-center justify-center font-bold text-lg bg-black text-white">
                     {quantity}
                   </span>
                   <button
                     onClick={() => setQuantity((q) => q + 1)}
-                    className="w-12 h-12 bg-amber-50 hover:bg-amber-100 font-bold text-lg transition-colors flex items-center justify-center"
+                    className="w-12 h-12 bg-[#1a1a1a] hover:bg-[#2a2a2a] text-white font-bold text-lg transition-colors flex items-center justify-center"
                   >
                     +
                   </button>
@@ -291,7 +291,7 @@ export default function ProductPage() {
 
               <Link
                 href="/#shop"
-                className="inline-flex items-center gap-2 text-amber-600 hover:text-amber-800 font-semibold mt-6 transition-colors"
+                className="inline-flex items-center gap-2 text-amber-400 hover:text-amber-300 font-semibold mt-6 transition-colors"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -305,46 +305,46 @@ export default function ProductPage() {
 
       {/* ─── Reviews Section ─── */}
       <div className="max-w-6xl mx-auto px-6 mt-12">
-        <div className="bg-white rounded-3xl shadow-lg border border-amber-100/60 p-8 md:p-12">
-          <h2 className="text-2xl md:text-3xl font-serif font-bold text-amber-950 mb-8">
+        <div className="bg-[#0a0a0a]/50 backdrop-blur-xl rounded-3xl shadow-lg border border-amber-500/20 p-8 md:p-12">
+          <h2 className="text-2xl md:text-3xl font-serif font-bold text-white mb-8">
             Customer Reviews
             {reviews.length > 0 && (
-              <span className="text-lg text-gray-400 font-normal ml-3">({reviews.length})</span>
+              <span className="text-lg text-gray-500 font-normal ml-3">({reviews.length})</span>
             )}
           </h2>
 
           {/* Review Form */}
           {user ? (
-            <form onSubmit={handleReviewSubmit} className="mb-10 p-6 bg-amber-50/50 rounded-2xl border border-amber-100">
-              <h3 className="text-lg font-bold text-gray-800 mb-4">Write a Review</h3>
+            <form onSubmit={handleReviewSubmit} className="mb-10 p-6 bg-[#151515] rounded-2xl border border-white/10">
+              <h3 className="text-lg font-bold text-white mb-4">Write a Review</h3>
               <div className="mb-4">
-                <label className="block text-sm font-semibold text-gray-600 mb-2">Your Rating</label>
+                <label className="block text-sm font-semibold text-gray-400 mb-2">Your Rating</label>
                 <StarSelector rating={reviewForm.rating} onChange={(r) => setReviewForm((f) => ({ ...f, rating: r }))} />
               </div>
               <div className="mb-4">
-                <label className="block text-sm font-semibold text-gray-600 mb-2">Your Review</label>
+                <label className="block text-sm font-semibold text-gray-400 mb-2">Your Review</label>
                 <textarea
                   value={reviewForm.comment}
                   onChange={(e) => setReviewForm((f) => ({ ...f, comment: e.target.value }))}
                   placeholder="Share your experience with this honey..."
                   rows={4}
-                  className="w-full border-2 border-amber-200 rounded-xl px-4 py-3 resize-none text-gray-700 placeholder:text-gray-400"
+                  className="w-full border border-white/20 bg-black rounded-xl px-4 py-3 resize-none text-white placeholder:text-gray-600 focus:border-amber-500 focus:outline-none transition-colors"
                 />
               </div>
               <button
                 type="submit"
                 disabled={submittingReview || !reviewForm.comment.trim()}
-                className="bg-amber-600 hover:bg-amber-700 text-white font-bold px-8 py-3 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-bold px-8 py-3 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed text-black shadow-lg shadow-amber-500/20"
               >
                 {submittingReview ? 'Submitting...' : 'Submit Review'}
               </button>
             </form>
           ) : (
-            <div className="mb-10 p-6 bg-amber-50/50 rounded-2xl border border-amber-100 text-center">
-              <p className="text-gray-600 mb-3">Want to share your thoughts?</p>
+            <div className="mb-10 p-6 bg-[#151515] rounded-2xl border border-white/10 text-center">
+              <p className="text-gray-400 mb-3">Want to share your thoughts?</p>
               <Link
                 href="/login"
-                className="inline-block bg-amber-600 hover:bg-amber-700 text-white font-bold px-6 py-3 rounded-xl transition-all"
+                className="inline-block bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 font-bold text-white px-6 py-3 rounded-xl transition-all shadow-lg shadow-amber-500/20"
               >
                 Login to Leave a Review
               </Link>
@@ -362,20 +362,20 @@ export default function ProductPage() {
               {reviews.map((review, i) => (
                 <div
                   key={review.id || i}
-                  className="p-6 rounded-2xl border border-amber-100/60 hover:border-amber-200 transition-colors"
+                  className="p-6 rounded-2xl border border-white/10 hover:border-amber-500/30 transition-colors bg-black/20"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-white font-bold text-sm">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-black font-bold text-sm">
                         {(review.user_name || review.name || 'U').charAt(0).toUpperCase()}
                       </div>
                       <div>
-                        <p className="font-bold text-gray-800 text-sm">{review.user_name || review.name || 'Anonymous'}</p>
+                        <p className="font-bold text-white text-sm">{review.user_name || review.name || 'Anonymous'}</p>
                         <StarDisplay rating={review.rating} size="w-4 h-4" />
                       </div>
                     </div>
                     {review.created_at && (
-                      <span className="text-xs text-gray-400">
+                      <span className="text-xs text-gray-500">
                         {new Date(review.created_at).toLocaleDateString('en-IN', {
                           year: 'numeric',
                           month: 'short',
@@ -384,7 +384,7 @@ export default function ProductPage() {
                       </span>
                     )}
                   </div>
-                  <p className="text-gray-600 leading-relaxed pl-13">{review.comment}</p>
+                  <p className="text-gray-300 leading-relaxed pl-13">{review.comment}</p>
                 </div>
               ))}
             </div>

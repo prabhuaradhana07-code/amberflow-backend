@@ -41,7 +41,7 @@ export default async function Home() {
   }
 
   return (
-    <div className="bg-[#FFFAEF] min-h-screen">
+    <div className="min-h-screen">
 
       {/* ─── HERO SECTION ──────────────────────────────────── */}
       <section className="relative w-full h-[90vh] min-h-[650px] flex items-center justify-center text-center overflow-hidden">
@@ -80,12 +80,7 @@ export default async function Home() {
           </a>
         </div>
 
-        {/* Decorative bottom wave */}
-        <div className="absolute bottom-0 left-0 right-0">
-          <svg viewBox="0 0 1440 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full">
-            <path d="M0 50L48 45C96 40 192 30 288 33C384 36 480 52 576 58C672 64 768 60 864 52C960 44 1056 32 1152 30C1248 28 1344 36 1392 40L1440 44V100H1392C1344 100 1248 100 1152 100C1056 100 960 100 864 100C768 100 672 100 576 100C480 100 384 100 288 100C192 100 96 100 48 100H0V50Z" fill="#FFFAEF"/>
-          </svg>
-        </div>
+        {/* Decorative bottom wave - Removed for dark mesh continuity */}
       </section>
 
       {/* ─── TRUST BADGES ──────────────────────────────────── */}
@@ -100,8 +95,8 @@ export default async function Home() {
               <div className="w-20 h-20 bg-amber-100/50 backdrop-blur-sm rounded-2xl flex items-center justify-center mb-5 group-hover:bg-amber-200 transition-colors duration-500 group-hover:scale-110 transform shadow-inner">
                 <span className="text-4xl">{badge.icon}</span>
               </div>
-              <h3 className="font-bold text-amber-900 text-lg mb-2">{badge.title}</h3>
-              <p className="text-sm text-amber-700/70 leading-relaxed">{badge.desc}</p>
+              <h3 className="font-bold text-white text-lg mb-2">{badge.title}</h3>
+              <p className="text-sm text-amber-100/70 leading-relaxed">{badge.desc}</p>
             </div>
           ))}
         </div>
@@ -111,8 +106,8 @@ export default async function Home() {
       {/* ─── PRODUCT GRID ──────────────────────────────────── */}
       <section id="shop" className="py-16 md:py-24 px-6 scroll-mt-20">
         <div className="text-center mb-16">
-          <span className="text-amber-600 font-semibold tracking-widest text-xs uppercase">Curated Selection</span>
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-serif text-amber-950 mt-3 mb-6">
+          <span className="text-amber-400 font-semibold tracking-widest text-xs uppercase">Curated Selection</span>
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-serif text-white mt-3 mb-6">
             Our Golden Collection
           </h2>
           <div className="flex items-center justify-center gap-3">
@@ -126,9 +121,9 @@ export default async function Home() {
           {products.map((product, idx) => (
             <div key={product.id} className="group relative">
               <Link href={`/product/${product.slug}`} className="block">
-                <div className="bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-2xl hover:shadow-amber-200/50 transition-all duration-500 transform group-hover:-translate-y-3 border border-amber-100/80 flex flex-col h-full">
+                <div className="bg-[#0a0a0a]/40 backdrop-blur-md rounded-3xl overflow-hidden shadow-sm hover:shadow-2xl hover:shadow-amber-500/10 transition-all duration-500 transform group-hover:-translate-y-3 border border-amber-500/20 flex flex-col h-full">
                   {/* Image */}
-                  <div className="h-72 relative overflow-hidden bg-gradient-to-br from-amber-50 to-amber-100">
+                  <div className="h-72 relative overflow-hidden bg-gradient-to-br from-neutral-900 to-neutral-800">
                     <Image
                       src={getImageUrl(product.image_url) || FALLBACK_IMAGES[idx % FALLBACK_IMAGES.length]}
                       alt={product.name}
@@ -147,17 +142,17 @@ export default async function Home() {
 
                   {/* Content */}
                   <div className="p-7 flex flex-col flex-grow">
-                    <h3 className="text-xl font-serif font-bold text-gray-900 mb-2 group-hover:text-amber-800 transition-colors">
+                    <h3 className="text-xl font-serif font-bold text-white mb-2 group-hover:text-amber-400 transition-colors">
                       {product.name}
                     </h3>
-                    <p className="text-gray-500 text-sm mb-6 line-clamp-2 flex-grow leading-relaxed">
+                    <p className="text-gray-400 text-sm mb-6 line-clamp-2 flex-grow leading-relaxed">
                       {product.description}
                     </p>
 
-                    <div className="flex justify-between items-center pt-5 border-t border-amber-100">
+                    <div className="flex justify-between items-center pt-5 border-t border-white/10">
                       <div>
-                        <span className="text-2xl font-black text-amber-900">₹{product.price}</span>
-                        <span className="text-xs text-gray-400 font-medium ml-1.5">/ {product.weight_g}g</span>
+                        <span className="text-2xl font-black text-amber-400">₹{product.price}</span>
+                        <span className="text-xs text-gray-500 font-medium ml-1.5">/ {product.weight_g}g</span>
                       </div>
                     </div>
                   </div>
@@ -184,8 +179,8 @@ export default async function Home() {
         <div className="absolute inset-0 bg-gradient-to-b from-amber-100/40 to-transparent" />
         <div className="relative z-10 max-w-6xl mx-auto">
           <div className="text-center mb-16">
-            <span className="text-amber-600 font-semibold tracking-widest text-xs uppercase">Testimonials</span>
-            <h2 className="text-4xl md:text-5xl font-serif text-amber-950 mt-3">
+            <span className="text-amber-400 font-semibold tracking-widest text-xs uppercase">Testimonials</span>
+            <h2 className="text-4xl md:text-5xl font-serif text-white mt-3">
               What Our Customers Say
             </h2>
           </div>
@@ -204,14 +199,14 @@ export default async function Home() {
                     </svg>
                   ))}
                 </div>
-                <p className="text-gray-700 leading-relaxed mb-6 italic">&ldquo;{t.quote}&rdquo;</p>
+                <p className="text-gray-300 leading-relaxed mb-6 italic">&ldquo;{t.quote}&rdquo;</p>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-white font-bold text-sm">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-black font-bold text-sm">
                     {t.name.charAt(0)}
                   </div>
                   <div>
-                    <p className="font-bold text-gray-900 text-sm">{t.name}</p>
-                    <p className="text-xs text-gray-500">{t.location}</p>
+                    <p className="font-bold text-white text-sm">{t.name}</p>
+                    <p className="text-xs text-amber-400/80">{t.location}</p>
                   </div>
                 </div>
               </div>

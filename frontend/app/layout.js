@@ -56,7 +56,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" className="scroll-smooth" data-scroll-behavior="smooth">
       <body
-        className={`${inter.variable} ${playfair.variable} font-sans bg-amber-50 text-gray-900 antialiased`}
+        className={`${inter.variable} ${playfair.variable} font-sans mesh-bg text-gray-100 antialiased`}
       >
         <ToastProvider>
           <CartProvider>
