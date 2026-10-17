@@ -51,9 +51,26 @@ async function migrate() {
     `);
     console.log('✅  vendor_details table ready');
 
-    // ── Products table (already exists, adding columns) ───────────
+    // ── Products table ───────────────────────────────────────────
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS products (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        slug VARCHAR(255) UNIQUE NOT NULL,
+        description TEXT,
+        honey_type VARCHAR(100),
+        price DECIMAL(10,2) NOT NULL,
+        weight_g INTEGER,
+        stock INTEGER DEFAULT 0,
+        image_url TEXT,
+        vendor_id INTEGER REFERENCES users(id),
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
     await client.query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS vendor_id INTEGER REFERENCES users(id);`);
-    console.log('✅  products table updated');
+    await client.query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;`);
+    console.log('✅  products table ready');
 
     // ── Orders table ──────────────────────────────────────────
     await client.query(`

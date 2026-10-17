@@ -28,6 +28,7 @@ app.use(cors({
     if (
       allowedOrigins.indexOf(origin) !== -1 || 
       origin.endsWith('.amberflow.in') ||
+      origin.endsWith('.vercel.app') ||
       origin.endsWith('.up.railway.app')
     ) {
       callback(null, true);
