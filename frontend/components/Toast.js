@@ -49,7 +49,7 @@ export function ToastProvider({ children }) {
     <ToastContext.Provider value={{ showToast }}>
       {children}
       {/* Toast Container */}
-      <div className="toast-container" aria-live="polite" aria-label="Notifications">
+      <div className="toast-container" role="region" aria-live="polite" aria-label="Notifications">
         {toasts.map((toast) => (
           <ToastItem
             key={toast.id}

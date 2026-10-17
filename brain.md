@@ -9,8 +9,9 @@ This document serves as the overarching context and architecture guide for the *
 - **Database:** PostgreSQL (using `pg` pool).
 - **Authentication:** JWT (JSON Web Tokens) with Bcrypt password hashing.
 - **Hosting / Deployment:**
-  - **Frontend:** Railway (Custom Domain: `amberflow.in`, Repository: `amberflow-frontend`)
-  - **Backend:** Railway (PostgreSQL + Node.js server, Repository: `amberflow-backend` with Root Directory set to `/backend`)
+  - **Frontend:** Vercel (Custom Domain: `amberflow.in`, Repository: `amberflow-frontend`, Root Directory: `/frontend`)
+  - **Backend:** Render (Free Web Service: `https://amberflow-backend.onrender.com`, Repository: `amberflow-backend` with Root Directory set to `/backend`)
+  - **Database:** Supabase (Free PostgreSQL database with connection pooling)
   - **File Storage:** Local disk storage via `multer` (served via `/uploads` static route on the backend).
 
 ## 2. User Roles & Permissions
