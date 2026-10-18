@@ -54,7 +54,7 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
     res.status(201).json(result.rows[0]);
   } catch (err) {
     console.error('Review creation error:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Failed to submit review. Please try again.' });
   }
 });
 
@@ -78,7 +78,7 @@ router.get('/', async (req, res) => {
     res.json(result.rows);
   } catch (err) {
     console.error('Fetch reviews error:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Failed to retrieve reviews.' });
   }
 });
 
@@ -103,7 +103,7 @@ router.get('/product/:id', async (req, res) => {
     res.json(result.rows);
   } catch (err) {
     console.error('Fetch product reviews error:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Failed to retrieve product reviews.' });
   }
 });
 

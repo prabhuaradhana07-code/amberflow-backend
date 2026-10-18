@@ -126,6 +126,15 @@ export default function AdminDashboardPage() {
 
   const getImageUrl = (url) => url && url.startsWith('/uploads/') ? `${API_URL}${url}` : url;
 
+  const sanitizeCsvCell = (val) => {
+    let str = (val || '').toString().replace(/"/g, '""');
+    // Prefix single quote if cell starts with formula trigger characters
+    if (/^[=\+\-@\t\r]/.test(str)) {
+      str = "'" + str;
+    }
+    return `"${str}"`;
+  };
+
   const handleDownloadCSV = () => {
     if (orders.length === 0) {
       showToast('No orders to export', 'error');
@@ -134,14 +143,14 @@ export default function AdminDashboardPage() {
     const headers = ['Order ID', 'Customer Name', 'Customer Email', 'City', 'State', 'Amount (INR)', 'Date', 'Status', 'UPI Ref'];
     const rows = orders.map(o => [
       o.id,
-      `"${(o.user_name || o.shipping_name || '').replace(/"/g, '""')}"`,
-      `"${(o.user_email || '').replace(/"/g, '""')}"`,
-      `"${(o.shipping_city || '').replace(/"/g, '""')}"`,
-      `"${(o.shipping_state || '').replace(/"/g, '""')}"`,
+      sanitizeCsvCell(o.user_name || o.shipping_name || ''),
+      sanitizeCsvCell(o.user_email || ''),
+      sanitizeCsvCell(o.shipping_city || ''),
+      sanitizeCsvCell(o.shipping_state || ''),
       o.total,
       new Date(o.created_at).toLocaleDateString('en-IN'),
       o.status,
-      o.upi_ref || ''
+      sanitizeCsvCell(o.upi_ref || '')
     ]);
     
     const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');

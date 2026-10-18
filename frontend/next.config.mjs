@@ -19,6 +19,14 @@ const nextConfig = {
             value: 'nosniff',
           },
           {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(), microphone=(), geolocation=()',
+          },
+          {
             key: 'Content-Security-Policy',
             value: "frame-ancestors 'self';",
           }
@@ -34,11 +42,19 @@ const nextConfig = {
       },
       {
         protocol: 'https',
-        hostname: '**',
+        hostname: 'amberflow-backend.onrender.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'amberflow.in',
+      },
+      {
+        protocol: 'https',
+        hostname: 'www.amberflow.in',
       },
       {
         protocol: 'http',
-        hostname: '**',
+        hostname: 'localhost',
       },
     ],
   },

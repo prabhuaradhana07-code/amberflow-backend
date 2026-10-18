@@ -1,31 +1,71 @@
 const multer = require('multer');
 const path = require('path');
 const crypto = require('crypto');
+const fs = require('fs');
+
+const ALLOWED_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.pdf']);
+const ALLOWED_MIMES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'application/pdf'
+]);
 
 // Setup storage engine
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, path.join(__dirname, '../uploads/'));
+    // Separate KYC documents from public uploads
+    if (file.fieldname === 'aadhaar_doc' || file.fieldname === 'pan_doc') {
+      const kycDir = path.join(__dirname, '../uploads/kyc/');
+      if (!fs.existsSync(kycDir)) {
+        fs.mkdirSync(kycDir, { recursive: true });
+      }
+      cb(null, kycDir);
+    } else {
+      const publicDir = path.join(__dirname, '../uploads/');
+      if (!fs.existsSync(publicDir)) {
+        fs.mkdirSync(publicDir, { recursive: true });
+      }
+      cb(null, publicDir);
+    }
   },
   filename: function (req, file, cb) {
-    const uniqueSuffix = crypto.randomBytes(8).toString('hex') + '-' + Date.now();
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+    const ext = path.extname(file.originalname).toLowerCase();
+    const uniqueSuffix = crypto.randomBytes(16).toString('hex') + '-' + Date.now();
+    cb(null, file.fieldname + '-' + uniqueSuffix + ext);
   }
 });
 
-// File filter (optional but recommended for images/pdfs)
+// Strict file filter
 const fileFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith('image/') || file.mimetype === 'application/pdf') {
-    cb(null, true);
-  } else {
-    cb(new Error('Only images and PDFs are allowed'), false);
+  const ext = path.extname(file.originalname).toLowerCase();
+
+  if (!ALLOWED_EXTENSIONS.has(ext)) {
+    return cb(new Error('Invalid file extension. Only jpg, jpeg, png, webp, and pdf are allowed.'), false);
   }
+
+  if (!ALLOWED_MIMES.has(file.mimetype)) {
+    return cb(new Error('Invalid file type. Mimetype does not match allowed types.'), false);
+  }
+
+  // Cross-verify extension and mimetype
+  if (ext === '.pdf' && file.mimetype !== 'application/pdf') {
+    return cb(new Error('Mismatched file extension and type.'), false);
+  }
+  if (ext !== '.pdf' && !file.mimetype.startsWith('image/')) {
+    return cb(new Error('Mismatched file extension and type.'), false);
+  }
+
+  cb(null, true);
 };
 
 const upload = multer({ 
   storage: storage,
   fileFilter: fileFilter,
-  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+  limits: { 
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+    files: 5
+  }
 });
 
 module.exports = upload;

@@ -18,19 +18,31 @@ export default function InvoicePage() {
       return;
     }
 
+    try {
+      const user = JSON.parse(userStr);
+      if (user.role !== 'admin') {
+        router.push('/');
+        return;
+      }
+    } catch {
+      router.push('/login');
+      return;
+    }
+
     fetch(`${API_URL}/api/orders/${params.id}`, {
       credentials: 'include'
     })
     .then(r => r.json())
     .then(resData => {
       if (resData.error) {
-        alert(resData.error);
         router.push('/admin');
       } else {
         setData(resData);
       }
     })
-    .catch(() => alert('Failed to fetch invoice data'))
+    .catch(() => {
+      router.push('/admin');
+    })
     .finally(() => setLoading(false));
   }, [params.id, router]);
 

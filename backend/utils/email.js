@@ -138,13 +138,15 @@ async function _send(to, subject, html) {
   const transport = getTransporter();
 
   if (!transport) {
-    // Fallback: log to console when SMTP is not configured
-    console.log('──────────────── EMAIL (console fallback) ────────────────');
-    console.log(`To:      ${to}`);
-    console.log(`Subject: ${subject}`);
-    console.log(`Body:    (HTML email – see raw below)`);
-    console.log(html);
-    console.log('──────────────────────────────────────────────────────────');
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('──────────────── EMAIL (console fallback) ────────────────');
+      console.log(`To:      ${to}`);
+      console.log(`Subject: ${subject}`);
+      console.log(html);
+      console.log('──────────────────────────────────────────────────────────');
+    } else {
+      console.warn(`[EMAIL WARNING] SMTP not configured. Skipped sending email to ${to.slice(0, 3)}***.`);
+    }
     return;
   }
 
