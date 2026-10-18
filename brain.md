@@ -47,12 +47,15 @@ The system supports three distinct roles (`users.role`):
 
 ## 4. Key Security Implementations
 - **SQL Injection:** Prevented by strictly using PostgreSQL parameterized queries (`$1, $2`).
-- **Passwords:** Hashed using `bcryptjs`.
-- **Authentication (Cookies):** JWT is stored in an `HttpOnly`, `Secure` cookie with `SameSite: 'none'` (for production cross-site support between frontend and backend domains).
-- **CORS:** Strictly whitelisted to `amberflow.in`, `localhost:3000`, and `*.up.railway.app`.
-- **Vulnerabilities Patched:**
-  - **IPv6 Railway Fix:** Nodemailer is forced to use IPv4 DNS resolution to prevent `ENETUNREACH` errors on Railway.
-  - **Multer:** Basic mimetype filtering implemented for image uploads.
+- **Passwords:** Hashed using `bcryptjs` with salt factor 10.
+- **Authentication (Cookies):** JWT is signed with a 256-bit cryptographically secure random key, stored in an `HttpOnly`, `Secure` cookie with `SameSite: 'none'`.
+- **CORS:** Strictly whitelisted to `amberflow.in`, `www.amberflow.in`, and `amberflow-frontend-deug.vercel.app`.
+- **Rate Limiting:** `express-rate-limit` enabled (300 requests/15m general; 20 attempts/15m for auth).
+- **Security Headers:** Enforced via `helmet` on the backend and strict headers in `next.config.mjs` (HSTS, nosniff, SAMEORIGIN, Referrer-Policy, Permissions-Policy).
+- **Price & Stock Integrity:** Server-side price lookups and row locking (`FOR UPDATE`); client prices cannot be tampered with.
+- **File Uploads:** Strict extension & MIME cross-verification; KYC identity documents (Aadhaar & PAN) stored in protected `uploads/kyc/` accessible only to admins.
+- **SSRF Prevention:** Next.js image remotePatterns locked to explicit trusted domains (Unsplash, Render backend, AmberFlow).
+- **CSV Injection:** Sanitized formula trigger characters (`=`, `+`, `-`, `@`) in admin CSV exports.
 
 ## 5. Third-Party Integrations & Tools
 - **Nodemailer:** Uses a Gmail App Password for transactional emails.
