@@ -54,8 +54,11 @@ The system supports three distinct roles (`users.role`):
 - **Rate Limiting:** `express-rate-limit` enabled (300 requests/15m general; 20 attempts/15m for auth).
 - **Security Headers:** Enforced via `helmet` on the backend and strict headers in `next.config.mjs` (HSTS, nosniff, SAMEORIGIN, Referrer-Policy, Permissions-Policy).
 - **Price & Stock Integrity:** Server-side price lookups and row locking (`FOR UPDATE`); client prices cannot be tampered with.
-- **File Uploads:** Strict extension & MIME cross-verification; KYC identity documents (Aadhaar & PAN) stored in protected `uploads/kyc/` accessible only to admins.
+- **File Uploads:** Strict extension & MIME cross-verification; KYC identity documents (Aadhaar & PAN) stored in protected `uploads/kyc/` accessible only to admins; public product & review uploads reject `.pdf` and accept only verified images (`.jpg`, `.jpeg`, `.png`, `.webp`).
+- **Email Injection Defense:** Transactional HTML emails sanitize and escape all user dynamic variables (`escapeHtml`) to prevent Email HTML Injection & Phishing Spoofing.
+- **Review Integrity & DoS Protection:** Product reviews enforce verified purchase checks (user must have a non-cancelled order containing the product) and comments are capped at 1,000 characters.
 - **SSRF Prevention:** Next.js image remotePatterns locked to explicit trusted domains (Unsplash, Render backend, AmberFlow).
+- **CSP Directives:** Enforced with `frame-ancestors 'self'; base-uri 'self'; object-src 'none';`.
 - **CSV Injection:** Sanitized formula trigger characters (`=`, `+`, `-`, `@`) in admin CSV exports.
 
 ## 5. Third-Party Integrations & Tools

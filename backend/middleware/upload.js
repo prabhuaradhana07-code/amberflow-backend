@@ -36,24 +36,37 @@ const storage = multer.diskStorage({
   }
 });
 
+const KYC_FIELDS = new Set(['aadhaar_doc', 'pan_doc']);
+const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp']);
+const IMAGE_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+
 // Strict file filter
 const fileFilter = (req, file, cb) => {
   const ext = path.extname(file.originalname).toLowerCase();
+  const isKyc = KYC_FIELDS.has(file.fieldname);
 
-  if (!ALLOWED_EXTENSIONS.has(ext)) {
-    return cb(new Error('Invalid file extension. Only jpg, jpeg, png, webp, and pdf are allowed.'), false);
+  if (isKyc) {
+    if (!ALLOWED_EXTENSIONS.has(ext)) {
+      return cb(new Error('Invalid KYC file extension. Only jpg, jpeg, png, webp, and pdf are allowed.'), false);
+    }
+    if (!ALLOWED_MIMES.has(file.mimetype)) {
+      return cb(new Error('Invalid KYC file type. Mimetype does not match allowed types.'), false);
+    }
+    if (ext === '.pdf' && file.mimetype !== 'application/pdf') {
+      return cb(new Error('Mismatched file extension and type.'), false);
+    }
+    if (ext !== '.pdf' && !file.mimetype.startsWith('image/')) {
+      return cb(new Error('Mismatched file extension and type.'), false);
+    }
+    return cb(null, true);
   }
 
-  if (!ALLOWED_MIMES.has(file.mimetype)) {
-    return cb(new Error('Invalid file type. Mimetype does not match allowed types.'), false);
+  // Public uploads (product images, reviews) MUST be images only - NO PDFs
+  if (!IMAGE_EXTENSIONS.has(ext)) {
+    return cb(new Error('Invalid image extension. Only jpg, jpeg, png, and webp are allowed for media uploads.'), false);
   }
-
-  // Cross-verify extension and mimetype
-  if (ext === '.pdf' && file.mimetype !== 'application/pdf') {
-    return cb(new Error('Mismatched file extension and type.'), false);
-  }
-  if (ext !== '.pdf' && !file.mimetype.startsWith('image/')) {
-    return cb(new Error('Mismatched file extension and type.'), false);
+  if (!IMAGE_MIMES.has(file.mimetype)) {
+    return cb(new Error('Invalid image type. Mimetype does not match allowed image types.'), false);
   }
 
   cb(null, true);

@@ -16,9 +16,17 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
     const userId = req.user.id;
 
     // Validate rating
-    if (!rating || rating < 1 || rating > 5) {
-      return res.status(400).json({ error: 'Rating must be between 1 and 5.' });
+    const numRating = parseInt(rating, 10);
+    if (!numRating || numRating < 1 || numRating > 5) {
+      return res.status(400).json({ error: 'Rating must be an integer between 1 and 5.' });
     }
+
+    // Validate comment length (prevent database bloat / DoS)
+    if (comment && typeof comment === 'string' && comment.trim().length > 1000) {
+      return res.status(400).json({ error: 'Review comment must not exceed 1000 characters.' });
+    }
+
+    const cleanComment = comment && typeof comment === 'string' ? comment.trim() : null;
 
     // Check for duplicate review (same user + same product/null)
     const duplicateCheck = product_id
@@ -35,20 +43,44 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
       return res.status(409).json({ error: 'You have already submitted a review.' });
     }
 
-    // If product_id is provided, verify the product exists
+    // If product_id is provided, verify the product exists AND that user has purchased it
+    let validProductId = null;
     if (product_id) {
-      const productExists = await pool.query('SELECT id FROM products WHERE id = $1', [product_id]);
+      const pId = parseInt(product_id, 10);
+      if (!pId || isNaN(pId)) {
+        return res.status(400).json({ error: 'Invalid product ID.' });
+      }
+
+      const productExists = await pool.query('SELECT id FROM products WHERE id = $1', [pId]);
       if (productExists.rows.length === 0) {
         return res.status(404).json({ error: 'Product not found.' });
       }
+
+      // Business logic integrity: Verify that user has a completed/confirmed order containing this product
+      const purchaseCheck = await pool.query(
+        `SELECT o.id FROM orders o
+         JOIN order_items oi ON o.id = oi.order_id
+         WHERE o.user_id = $1 AND oi.product_id = $2 AND o.status != 'cancelled'
+         LIMIT 1`,
+        [userId, pId]
+      );
+
+      if (purchaseCheck.rows.length === 0) {
+        return res.status(403).json({
+          error: 'Verified purchase required. You can only review products you have purchased.'
+        });
+      }
+
+      validProductId = pId;
     }
 
-    const image_url = req.file ? '/uploads/' + req.file.filename : provided_image_url;
+    // Store only verified local uploads
+    const image_url = req.file ? '/uploads/' + req.file.filename : null;
 
     const result = await pool.query(
       `INSERT INTO reviews (user_id, product_id, rating, comment, image_url)
        VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [userId, product_id || null, rating, comment || null, image_url || null]
+      [userId, validProductId, numRating, cleanComment, image_url]
     );
 
     res.status(201).json(result.rows[0]);

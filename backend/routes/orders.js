@@ -272,10 +272,10 @@ router.get('/vendor-stats', auth, async (req, res) => {
 });
 
 // ──────────────────────────────────────────────────────────────
-// GET /api/orders/user
+// GET /api/orders AND /api/orders/user
 // Get orders for the currently authenticated user
 // ──────────────────────────────────────────────────────────────
-router.get('/user', auth, async (req, res) => {
+router.get(['/', '/user'], auth, async (req, res) => {
   try {
     const ordersResult = await pool.query(
       `SELECT * FROM orders WHERE user_id = $1 ORDER BY created_at DESC`,
