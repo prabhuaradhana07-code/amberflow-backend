@@ -48,6 +48,7 @@ The system supports three distinct roles (`users.role`):
 ## 4. Key Security Implementations
 - **SQL Injection:** Prevented by strictly using PostgreSQL parameterized queries (`$1, $2`).
 - **Passwords:** Hashed using `bcryptjs` with salt factor 10.
+- **Password Rotation:** Dedicated protected endpoint `PUT /api/auth/change-password` rate-limited under `authLimiter` (20 attempts/15m), requiring verification of `currentPassword` before updating. UI controls integrated into both the Profile tab (`/dashboard`) and Admin Portal (`/admin` -> Security tab).
 - **Authentication (Cookies):** JWT is signed with a 256-bit cryptographically secure random key, stored in an `HttpOnly`, `Secure` cookie with `SameSite: 'none'`.
 - **CORS:** Strictly whitelisted to `amberflow.in`, `www.amberflow.in`, and `amberflow-frontend-deug.vercel.app`.
 - **Rate Limiting:** `express-rate-limit` enabled (300 requests/15m general; 20 attempts/15m for auth).
