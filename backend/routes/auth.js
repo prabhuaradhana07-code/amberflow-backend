@@ -332,6 +332,44 @@ router.put('/profile', auth, async (req, res) => {
 });
 
 // ──────────────────────────────────────────────────────────────
+// PUT /api/auth/change-password (protected)
+// ──────────────────────────────────────────────────────────────
+router.put('/change-password', auth, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Current password and new password are required.' });
+    }
+
+    if (typeof newPassword !== 'string' || newPassword.length < 8) {
+      return res.status(400).json({ error: 'New password must be at least 8 characters long.' });
+    }
+
+    // Verify current password
+    const userResult = await pool.query('SELECT password FROM users WHERE id = $1', [req.user.id]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, userResult.rows[0].password);
+    if (!isMatch) {
+      return res.status(400).json({ error: 'Current password is incorrect.' });
+    }
+
+    // Hash and update new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+    await pool.query('UPDATE users SET password = $1 WHERE id = $2', [hashedPassword, req.user.id]);
+
+    res.json({ message: 'Password changed successfully.' });
+  } catch (err) {
+    console.error('Change password error:', err);
+    res.status(500).json({ error: 'Failed to change password. Please try again.' });
+  }
+});
+
+// ──────────────────────────────────────────────────────────────
 // POST /api/auth/register-vendor
 // Register a new vendor and save KYC documents
 // ──────────────────────────────────────────────────────────────

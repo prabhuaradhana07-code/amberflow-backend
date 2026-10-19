@@ -29,6 +29,11 @@ export default function DashboardPage() {
   const [ratingModal, setRatingModal] = useState({ isOpen: false, order: null });
   const [reviewForm, setReviewForm] = useState({ rating: 5, comment: '', image: null });
 
+  // Password Change State
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [passwordChanging, setPasswordChanging] = useState(false);
+  const [passwordMsg, setPasswordMsg] = useState({ text: '', type: '' });
+
   useEffect(() => {
     const u = localStorage.getItem('user');
     if (!u) {
@@ -101,6 +106,51 @@ export default function DashboardPage() {
       }
     } catch (err) {
       alert('Network error while submitting review');
+    }
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setPasswordMsg({ text: '', type: '' });
+
+    if (!passwordForm.currentPassword || !passwordForm.newPassword) {
+      setPasswordMsg({ text: 'Please fill in both current and new password fields.', type: 'error' });
+      return;
+    }
+
+    if (passwordForm.newPassword.length < 8) {
+      setPasswordMsg({ text: 'New password must be at least 8 characters long.', type: 'error' });
+      return;
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordMsg({ text: 'New passwords do not match.', type: 'error' });
+      return;
+    }
+
+    setPasswordChanging(true);
+    try {
+      const res = await fetch(`${API_URL}/api/auth/change-password`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          currentPassword: passwordForm.currentPassword,
+          newPassword: passwordForm.newPassword,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setPasswordMsg({ text: 'Password successfully updated!', type: 'success' });
+        setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      } else {
+        setPasswordMsg({ text: data.error || 'Failed to update password.', type: 'error' });
+      }
+    } catch (err) {
+      setPasswordMsg({ text: 'Network error. Please try again.', type: 'error' });
+    } finally {
+      setPasswordChanging(false);
     }
   };
 
@@ -296,29 +346,96 @@ export default function DashboardPage() {
         )}
 
         {activeTab === 'profile' && (
-          <div className="bg-white rounded-2xl shadow-sm border border-amber-100 p-8">
-            <h2 className="text-2xl font-serif font-bold text-amber-900 mb-8">Profile Information</h2>
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="p-4 bg-amber-50/50 rounded-xl">
-                <p className="text-xs uppercase tracking-wider text-amber-600 font-bold mb-1">Full Name</p>
-                <p className="text-lg font-semibold text-gray-900">{profile?.name || '—'}</p>
+          <div className="space-y-6">
+            <div className="bg-white rounded-2xl shadow-sm border border-amber-100 p-8">
+              <h2 className="text-2xl font-serif font-bold text-amber-900 mb-8">Profile Information</h2>
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="p-4 bg-amber-50/50 rounded-xl">
+                  <p className="text-xs uppercase tracking-wider text-amber-600 font-bold mb-1">Full Name</p>
+                  <p className="text-lg font-semibold text-gray-900">{profile?.name || '—'}</p>
+                </div>
+                <div className="p-4 bg-amber-50/50 rounded-xl">
+                  <p className="text-xs uppercase tracking-wider text-amber-600 font-bold mb-1">Email</p>
+                  <p className="text-lg font-semibold text-gray-900">{profile?.email || '—'}</p>
+                </div>
+                <div className="p-4 bg-amber-50/50 rounded-xl">
+                  <p className="text-xs uppercase tracking-wider text-amber-600 font-bold mb-1">Phone</p>
+                  <p className="text-lg font-semibold text-gray-900">{profile?.phone || 'Not set'}</p>
+                </div>
+                <div className="p-4 bg-amber-50/50 rounded-xl">
+                  <p className="text-xs uppercase tracking-wider text-amber-600 font-bold mb-1">City, State</p>
+                  <p className="text-lg font-semibold text-gray-900">{(profile?.city || profile?.state) ? `${profile.city}, ${profile.state}` : 'Not set'}</p>
+                </div>
+                <div className="p-4 bg-amber-50/50 rounded-xl md:col-span-2">
+                  <p className="text-xs uppercase tracking-wider text-amber-600 font-bold mb-1">Street Address</p>
+                  <p className="text-lg font-semibold text-gray-900">{profile?.address || 'Not set'} {profile?.pincode ? `(PIN: ${profile.pincode})` : ''}</p>
+                </div>
               </div>
-              <div className="p-4 bg-amber-50/50 rounded-xl">
-                <p className="text-xs uppercase tracking-wider text-amber-600 font-bold mb-1">Email</p>
-                <p className="text-lg font-semibold text-gray-900">{profile?.email || '—'}</p>
+            </div>
+
+            {/* Change Password Card */}
+            <div className="bg-white rounded-2xl shadow-sm border border-amber-100 p-8">
+              <div className="flex items-center gap-3 mb-6">
+                <span className="text-2xl">🔐</span>
+                <div>
+                  <h2 className="text-2xl font-serif font-bold text-amber-900">Change Password</h2>
+                  <p className="text-sm text-gray-500">Update your account password with a strong, secure passphrase.</p>
+                </div>
               </div>
-              <div className="p-4 bg-amber-50/50 rounded-xl">
-                <p className="text-xs uppercase tracking-wider text-amber-600 font-bold mb-1">Phone</p>
-                <p className="text-lg font-semibold text-gray-900">{profile?.phone || 'Not set'}</p>
-              </div>
-              <div className="p-4 bg-amber-50/50 rounded-xl">
-                <p className="text-xs uppercase tracking-wider text-amber-600 font-bold mb-1">City, State</p>
-                <p className="text-lg font-semibold text-gray-900">{(profile?.city || profile?.state) ? `${profile.city}, ${profile.state}` : 'Not set'}</p>
-              </div>
-              <div className="p-4 bg-amber-50/50 rounded-xl md:col-span-2">
-                <p className="text-xs uppercase tracking-wider text-amber-600 font-bold mb-1">Street Address</p>
-                <p className="text-lg font-semibold text-gray-900">{profile?.address || 'Not set'} {profile?.pincode ? `(PIN: ${profile.pincode})` : ''}</p>
-              </div>
+
+              {passwordMsg.text && (
+                <div className={`p-4 rounded-xl mb-6 text-sm font-semibold flex items-center gap-2 ${
+                  passwordMsg.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'
+                }`}>
+                  <span>{passwordMsg.type === 'success' ? '✅' : '⚠️'}</span>
+                  <span>{passwordMsg.text}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleChangePassword} className="space-y-4 max-w-xl">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Current Password</label>
+                  <input
+                    type="password"
+                    required
+                    value={passwordForm.currentPassword}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                    placeholder="Enter current password"
+                    className="w-full border-2 border-amber-200 focus:border-amber-500 rounded-xl px-4 py-3 outline-none transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">New Password</label>
+                  <input
+                    type="password"
+                    required
+                    minLength={8}
+                    value={passwordForm.newPassword}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                    placeholder="Minimum 8 characters"
+                    className="w-full border-2 border-amber-200 focus:border-amber-500 rounded-xl px-4 py-3 outline-none transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Confirm New Password</label>
+                  <input
+                    type="password"
+                    required
+                    minLength={8}
+                    value={passwordForm.confirmPassword}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                    placeholder="Confirm new password"
+                    className="w-full border-2 border-amber-200 focus:border-amber-500 rounded-xl px-4 py-3 outline-none transition-colors"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={passwordChanging}
+                  className="bg-amber-600 hover:bg-amber-700 text-white font-bold px-8 py-3 rounded-xl transition-all disabled:opacity-50 shadow-md shadow-amber-200"
+                >
+                  {passwordChanging ? 'Updating Password...' : '🔒 Update Password'}
+                </button>
+              </form>
             </div>
           </div>
         )}

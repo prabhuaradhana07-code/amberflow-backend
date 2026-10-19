@@ -25,6 +25,8 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(null);
   const [activeTab, setActiveTab] = useState('orders');
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [passwordChanging, setPasswordChanging] = useState(false);
 
   useEffect(() => {
     const userStr = localStorage.getItem('user');
@@ -166,6 +168,50 @@ export default function AdminDashboardPage() {
     showToast('Orders backup downloaded successfully!', 'success');
   };
 
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+
+    if (!passwordForm.currentPassword || !passwordForm.newPassword) {
+      showToast('Please fill in both current and new password fields.', 'error');
+      return;
+    }
+
+    if (passwordForm.newPassword.length < 8) {
+      showToast('New password must be at least 8 characters long.', 'error');
+      return;
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      showToast('New passwords do not match.', 'error');
+      return;
+    }
+
+    setPasswordChanging(true);
+    try {
+      const res = await fetch(`${API_URL}/api/auth/change-password`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          currentPassword: passwordForm.currentPassword,
+          newPassword: passwordForm.newPassword,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        showToast('Admin password successfully changed!', 'success');
+        setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      } else {
+        showToast(data.error || 'Failed to update password.', 'error');
+      }
+    } catch (err) {
+      showToast('Network error while updating password.', 'error');
+    } finally {
+      setPasswordChanging(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#FFFAEF]">
@@ -264,6 +310,14 @@ export default function AdminDashboardPage() {
             }`}
           >
             👥 Customers
+          </button>
+          <button
+            onClick={() => setActiveTab('security')}
+            className={`px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 ${
+              activeTab === 'security' ? 'bg-amber-600 text-white shadow-lg shadow-amber-200/50' : 'bg-white text-gray-600 hover:bg-amber-50 border border-amber-100'
+            }`}
+          >
+            🔐 Security
           </button>
         </div>
 
@@ -506,6 +560,63 @@ export default function AdminDashboardPage() {
                 </tbody>
               </table>
             </div>
+          </div>
+        )}
+
+        {activeTab === 'security' && (
+          <div className="bg-white rounded-2xl shadow-xl border border-amber-100 p-8 max-w-2xl">
+            <div className="flex items-center gap-3 mb-6">
+              <span className="text-3xl">🔐</span>
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">Admin Password & Security</h2>
+                <p className="text-gray-500 text-sm">Rotate your administrator password to maintain production account security.</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleChangePassword} className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Current Password</label>
+                <input
+                  type="password"
+                  required
+                  value={passwordForm.currentPassword}
+                  onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                  placeholder="Enter current admin password"
+                  className="w-full border-2 border-gray-200 focus:border-amber-500 rounded-xl px-4 py-3 outline-none transition-colors"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">New Passphrase</label>
+                <input
+                  type="password"
+                  required
+                  minLength={8}
+                  value={passwordForm.newPassword}
+                  onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                  placeholder="Minimum 8 characters (recommend 12+ characters)"
+                  className="w-full border-2 border-gray-200 focus:border-amber-500 rounded-xl px-4 py-3 outline-none transition-colors"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Confirm New Passphrase</label>
+                <input
+                  type="password"
+                  required
+                  minLength={8}
+                  value={passwordForm.confirmPassword}
+                  onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                  placeholder="Re-enter new passphrase"
+                  className="w-full border-2 border-gray-200 focus:border-amber-500 rounded-xl px-4 py-3 outline-none transition-colors"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={passwordChanging}
+                className="bg-amber-600 hover:bg-amber-700 text-white font-bold px-8 py-3 rounded-xl transition-all disabled:opacity-50 shadow-md shadow-amber-200"
+              >
+                {passwordChanging ? 'Updating Password...' : '🔒 Rotate Admin Password'}
+              </button>
+            </form>
           </div>
         )}
 
