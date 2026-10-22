@@ -5,6 +5,8 @@ const rateLimit = require('express-rate-limit');
 const cookieParser = require('cookie-parser');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
+const multer = require('multer');
 require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 
 // Import routes and middlewares
@@ -99,6 +101,70 @@ app.get('/uploads/kyc/:filename', authMiddleware, (req, res) => {
   // Prevent directory traversal
   const safeFilename = path.basename(req.params.filename);
   const filePath = path.join(kycDir, safeFilename);
+
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: 'Document not found.' });
+  }
+
+  res.sendFile(filePath);
+});
+
+// ── Document Uploads for Project 1 / BatchTrace (Invoices & Lab Certificates) ──
+const docDir = path.join(__dirname, 'uploads/documents');
+if (!fs.existsSync(docDir)) fs.mkdirSync(docDir, { recursive: true });
+
+const docStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, docDir);
+  },
+  filename: function (req, file, cb) {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const cleanBase = path.basename(file.originalname, ext).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 30);
+    const unique = Date.now() + '-' + crypto.randomBytes(6).toString('hex');
+    cb(null, `${cleanBase}-${unique}${ext}`);
+  }
+});
+
+const docFilter = (req, file, cb) => {
+  const allowedExts = new Set(['.pdf', '.jpg', '.jpeg', '.png', '.webp']);
+  const ext = path.extname(file.originalname).toLowerCase();
+  if (!allowedExts.has(ext)) {
+    return cb(new Error('Invalid document format. Only PDF, JPG, PNG, and WebP files are allowed.'));
+  }
+  cb(null, true);
+};
+
+const uploadDoc = multer({
+  storage: docStorage,
+  fileFilter: docFilter,
+  limits: { fileSize: 15 * 1024 * 1024 } // 15MB max limit
+});
+
+// Endpoint to upload real invoices and lab reports
+app.post('/api/documents/upload', uploadDoc.single('file'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file was uploaded.' });
+  }
+
+  const host = req.get('host');
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+  const baseUrl = process.env.BACKEND_URL || `${protocol}://${host}`;
+  const fileUrl = `${baseUrl}/uploads/documents/${req.file.filename}`;
+
+  res.json({
+    success: true,
+    url: fileUrl,
+    filename: req.file.originalname,
+    storedFilename: req.file.filename,
+    mimetype: req.file.mimetype,
+    size: req.file.size
+  });
+});
+
+// Dedicated secure route to serve uploaded documents with inline disposition
+app.get('/uploads/documents/:filename', (req, res) => {
+  const safeFilename = path.basename(req.params.filename);
+  const filePath = path.join(docDir, safeFilename);
 
   if (!fs.existsSync(filePath)) {
     return res.status(404).json({ error: 'Document not found.' });
