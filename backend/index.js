@@ -72,7 +72,7 @@ app.use(cors({
     if (!origin) return callback(null, true);
 
     const cleanOrigin = origin.replace(/\/$/, '');
-    if (allowedOrigins.has(cleanOrigin)) {
+    if (allowedOrigins.has(cleanOrigin) || cleanOrigin.endsWith('.vercel.app') || cleanOrigin.endsWith('amberflow.in')) {
       return callback(null, true);
     }
     return callback(new Error('Blocked by CORS policy'));
@@ -163,11 +163,36 @@ app.post('/api/documents/upload', uploadDoc.single('file'), (req, res) => {
 
 // Dedicated secure route to serve uploaded documents with inline disposition
 app.get('/uploads/documents/:filename', (req, res) => {
+  res.removeHeader('X-Frame-Options');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Content-Security-Policy', "frame-ancestors *");
+
   const safeFilename = path.basename(req.params.filename);
   const filePath = path.join(docDir, safeFilename);
 
   if (!fs.existsSync(filePath)) {
     return res.status(404).json({ error: 'Document not found.' });
+  }
+
+  const ext = path.extname(safeFilename).toLowerCase();
+
+  if (req.query.download === '1') {
+    const downloadName = req.query.name || safeFilename;
+    return res.download(filePath, downloadName);
+  }
+
+  if (ext === '.pdf') {
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${safeFilename}"`);
+  } else if (['.jpg', '.jpeg'].includes(ext)) {
+    res.setHeader('Content-Type', 'image/jpeg');
+    res.setHeader('Content-Disposition', `inline; filename="${safeFilename}"`);
+  } else if (ext === '.png') {
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Content-Disposition', `inline; filename="${safeFilename}"`);
+  } else if (ext === '.webp') {
+    res.setHeader('Content-Type', 'image/webp');
+    res.setHeader('Content-Disposition', `inline; filename="${safeFilename}"`);
   }
 
   res.sendFile(filePath);
