@@ -1,7 +1,9 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 
 export default function FloatingChat() {
+  const pathname = usePathname();
   const [isVisible, setIsVisible] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
 
@@ -11,6 +13,7 @@ export default function FloatingChat() {
     return () => clearTimeout(timer);
   }, []);
 
+  if (pathname?.startsWith('/project1')) return null;
   if (!isVisible) return null;
 
   return (

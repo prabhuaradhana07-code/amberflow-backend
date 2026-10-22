@@ -1,9 +1,13 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
 
 export default function Navbar() {
+  const pathname = usePathname();
+  if (pathname?.startsWith('/project1')) return null;
+
   const { count } = useCart();
   const [user, setUser] = useState(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);

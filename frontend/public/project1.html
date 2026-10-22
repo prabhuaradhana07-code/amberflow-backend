@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>BatchTrace — Recycled-Content Documentation Log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<style>
+  :root {
+    --paper: #EEF2F1;
+    --paper-raised: #FFFFFF;
+    --ink: #1B2A3A;
+    --ink-soft: #4C5C6B;
+    --line: #C9D3D1;
+    --steel: #3C6E71;
+    --steel-deep: #28494C;
+    --amber: #9A5F06;
+    --amber-soft: #FDF4E7;
+    --ok: #1F6B4B;
+    --ok-soft: #E6F4EA;
+    --bad: #A1302B;
+    --bad-soft: #FDECEA;
+    --radius: 4px;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #141B1E;
+      --paper-raised: #1C262A;
+      --ink: #E7EDEC;
+      --ink-soft: #A9B8B7;
+      --line: #2E3C3F;
+      --steel: #7FB2AF;
+      --steel-deep: #A8D2CF;
+      --amber: #E0A23B;
+      --amber-soft: #3A2E16;
+      --ok: #6FCBA0;
+      --ok-soft: #1B3528;
+      --bad: #E06D69;
+      --bad-soft: #381A19;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #141B1E;
+    --paper-raised: #1C262A;
+    --ink: #E7EDEC;
+    --ink-soft: #A9B8B7;
+    --line: #2E3C3F;
+    --steel: #7FB2AF;
+    --steel-deep: #A8D2CF;
+    --amber: #E0A23B;
+    --amber-soft: #3A2E16;
+    --ok: #6FCBA0;
+    --ok-soft: #1B3528;
+    --bad: #E06D69;
+    --bad-soft: #381A19;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 14px;
+    padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
+  header {
+    background: var(--paper-raised); border-bottom: 1px solid var(--line);
+    padding: 16px clamp(16px, 4vw, 36px); display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  }
+  .header-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .brand-badge { background: var(--steel-deep); color: #fff; font-family: 'IBM Plex Mono', monospace; font-weight: bold; padding: 5px 9px; border-radius: var(--radius); }
+  h1 { font-size: 1.15rem; font-weight: 700; margin: 0; }
+  p.sub { margin: 2px 0 0; color: var(--ink-soft); font-size: 0.8rem; }
+  .tag { font-size: 0.7rem; border: 1px solid var(--steel); color: var(--steel-deep); border-radius: 3px; padding: 2px 8px; white-space: nowrap; }
+  .sub-bar {
+    background: var(--paper); border-bottom: 1px solid var(--line); padding: 8px clamp(16px, 4vw, 36px);
+    display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; flex-wrap: wrap; gap: 10px;
+  }
+  nav { display: flex; gap: 2px; padding: 0 clamp(16px, 4vw, 36px); border-bottom: 1px solid var(--line); background: var(--paper-raised); overflow-x: auto; }
+  nav button {
+    background: none; border: none; color: var(--ink-soft); font: inherit; font-size: 0.85rem; font-weight: 500;
+    padding: 12px 14px; cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap;
+  }
+  nav button[aria-selected="true"] { color: var(--steel-deep); border-bottom-color: var(--steel-deep); font-weight: 600; }
+  main { padding: 24px clamp(16px, 4vw, 36px) 60px; max-width: 1200px; margin: 0 auto; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .notice {
+    border-radius: var(--radius); padding: 12px 14px; font-size: 0.8rem; line-height: 1.5; margin-bottom: 20px;
+  }
+  .notice.info { background: var(--paper-raised); border: 1px solid var(--steel); color: var(--ink); }
+  .notice.warn { background: var(--amber-soft); border: 1px solid var(--amber); color: var(--ink); }
+  .card { background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; }
+  .card h2 { font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.03em; margin: 0 0 14px; color: var(--ink-soft); font-weight: 600; }
+  .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 20px; }
+  .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+  .kpi-card { background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
+  .kpi-label { font-size: 0.72rem; color: var(--ink-soft); text-transform: uppercase; font-weight: 600; display: block; }
+  .kpi-val { font-size: 1.5rem; font-weight: bold; margin: 6px 0 2px; display: block; }
+  .table-wrap { overflow-x: auto; width: 100%; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  th { text-align: left; color: var(--ink-soft); font-weight: 600; font-size: 0.72rem; letter-spacing: 0.02em; padding: 8px 10px; border-bottom: 1px solid var(--line); text-transform: uppercase; }
+  td { padding: 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  .chip { display: inline-block; font-size: 0.72rem; padding: 2px 7px; border-radius: 3px; font-weight: 500; }
+  .chip-ok { background: var(--ok-soft); color: var(--ok); border: 1px solid var(--ok); }
+  .chip-warn { background: var(--amber-soft); color: var(--amber); border: 1px solid var(--amber); }
+  .chip-bad { background: var(--bad-soft); color: var(--bad); border: 1px solid var(--bad); }
+  .btn { border-radius: var(--radius); padding: 7px 12px; font: inherit; font-size: 0.8rem; font-weight: 500; cursor: pointer; border: 1px solid transparent; }
+  .solid-btn { background: var(--steel-deep); color: #fff; }
+  .ghost-btn { background: none; color: var(--steel-deep); border-color: var(--line); }
+  .btn-upload { cursor: pointer; font-size: 0.72rem; color: var(--steel-deep); border: 1px dashed var(--steel); padding: 2px 8px; border-radius: 3px; display: inline-block; }
+  .input-label { display: block; font-size: 0.75rem; color: var(--ink-soft); margin: 10px 0 4px; font-weight: 500; }
+  input, select, textarea { width: 100%; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); color: var(--ink); font: inherit; font-size: 0.85rem; padding: 7px 9px; }
+  .pallet-label-card { display: none; }
+  @media print {
+    body, html { background: #fff !important; color: #000 !important; }
+    header, .sub-bar, nav, main { display: none !important; }
+    .pallet-label-card { display: block !important; border: 3px solid #000; padding: 24px; width: 5.5in; margin: 0 auto; page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <span class="brand-badge">BT</span>
+    <div>
+      <h1>BatchTrace</h1>
+      <p class="sub">Recycled-content documentation & mass-balance ledger for plastics manufacturers.</p>
+    </div>
+    <span class="tag">Pilot Prototype · Not CPCB Affiliated</span>
+  </div>
+  <div>
+    <button class="btn ghost-btn text-xs" onclick="resetDemo()">🔄 Reset Demo</button>
+    <button class="btn ghost-btn text-xs" onclick="toggleTheme()">🌓 Theme</button>
+  </div>
+</header>
+
+<div class="sub-bar">
+  <div><b>Factory:</b> <span class="mono" id="factoryName">Demo Polymers Pvt Ltd (sample data)</span> · <b>Buyer Min Recycled Share:</b> <input id="minPctInput" type="number" style="width:50px;display:inline-block;padding:2px 4px;" value="30">%</div>
+  <div class="mono">Ledger Balance: <b id="subBalance" style="color:var(--steel-deep)">—</b></div>
+</div>
+
+<nav>
+  <button aria-selected="true" data-tab="dash" onclick="setTab('dash')">📊 Dashboard</button>
+  <button aria-selected="false" data-tab="ledger" onclick="setTab('ledger')">📋 Material Ledger</button>
+  <button aria-selected="false" data-tab="batches" onclick="setTab('batches')">📦 Batches</button>
+  <button aria-selected="false" data-tab="buyer" onclick="setTab('buyer')">📱 Buyer Scan View & QR</button>
+  <button aria-selected="false" data-tab="audit" onclick="setTab('audit')">📑 Audit Pack</button>
+</nav>
+
+<main>
+  <!-- TAB: DASHBOARD -->
+  <section id="pane-dash" class="panel active">
+    <div class="notice info"><b>Prototype Purpose:</b> Enforces what spreadsheets fail to catch: mass-balance refusal, missing lab report gating, and self-service QR pallet verification. Not a CPCB certificate.</div>
+    <div class="grid-4" id="kpiCards"></div>
+    <div class="grid-2">
+      <div class="card">
+        <h2>⚠️ Needs Attention / Gaps</h2>
+        <div id="attentionList"></div>
+      </div>
+      <div class="card">
+        <h2>📦 Recycled Purchase Lots (FIFO Balances)</h2>
+        <div id="lotProgress"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB: LEDGER -->
+  <section id="pane-ledger" class="panel">
+    <div class="card">
+      <h2>Recycled Material Purchase Ledger</h2>
+      <div class="table-wrap">
+        <table id="ledgerTable">
+          <thead><tr><th>Lot ID</th><th>Date</th><th>Recycler</th><th>Invoice Ref</th><th style="text-align:right">Total MT</th><th style="text-align:right">Allocated</th><th style="text-align:right">Remaining</th><th>Invoice Doc</th><th>Lab Report Doc</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB: BATCHES -->
+  <section id="pane-batches" class="panel">
+    <div id="batchCardsList"></div>
+  </section>
+
+  <!-- TAB: BUYER VIEW -->
+  <section id="pane-buyer" class="panel">
+    <div class="card" style="text-align:center">
+      <h2>Buyer Verification Screen Preview</h2>
+      <canvas id="bigQrCanvas" style="margin:16px auto;display:block;"></canvas>
+      <div class="notice warn" style="max-width:600px;margin:12px auto;text-align:left;"><b>Disclaimer:</b> Not a certificate. Repeats what the manufacturer recorded. Ask for original recycler invoice and lab report, and verify EPR certificates on the CPCB portal.</div>
+    </div>
+  </section>
+
+  <!-- TAB: AUDIT PACK -->
+  <section id="pane-audit" class="panel">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <h2>Recycled Content Audit Pack</h2>
+        <button class="btn solid-btn" onclick="window.print()">🖨 Print / PDF</button>
+      </div>
+      <div class="table-wrap">
+        <table id="auditTable">
+          <thead><tr><th>Batch ID</th><th>Date</th><th>Buyer</th><th>Product</th><th style="text-align:right">Total MT</th><th style="text-align:right">rPET %</th><th style="text-align:right">Recycled MT</th><th>Traced Lots</th><th>Status</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+(function() {
+  "use strict";
+  var S = {
+    factory: "Demo Polymers Pvt Ltd (sample data)",
+    minPct: 30,
+    lots: [
+      { id: "LOT-001", recycler: "GreenLoop Recyclers (sample)", invoice: "GL/26-27/1042", date: "2026-09-18", mt: 25.0, inv: "inv-GL-1042.pdf", lab: "lab-GL-8821.pdf" },
+      { id: "LOT-002", recycler: "EcoPellet Reclaim (sample)", invoice: "EPR/26/089", date: "2026-10-02", mt: 15.0, inv: "inv-EPR-089.pdf", lab: "" }
+    ],
+    batches: [
+      { id: "BT-2026-001", buyer: "Horizon Beverages (sample)", product: "28mm water-bottle cap", total: 40.0, pct: 50.0, date: "2026-10-12", status: "released" },
+      { id: "BT-2026-002", buyer: "Northfield Foods (sample)", product: "500ml PET preform", total: 20.0, pct: 40.0, date: "2026-10-15", status: "draft" }
+    ]
+  };
+
+  try {
+    var stored = localStorage.getItem("batchtrace.state.v1");
+    if (stored) S = JSON.parse(stored);
+  } catch(e) {}
+
+  window.setTab = function(t) {
+    document.querySelectorAll(".panel").forEach(function(p) { p.classList.toggle("active", p.id === "pane-" + t); });
+    document.querySelectorAll("nav button").forEach(function(b) { b.setAttribute("aria-selected", b.dataset.tab === t ? "true" : "false"); });
+    render();
+  };
+
+  window.toggleTheme = function() {
+    var cur = document.documentElement.getAttribute("data-theme") || "light";
+    var next = cur === "light" ? "dark" : "light";
+    document.documentElement.setAttribute("data-theme", next);
+  };
+
+  window.resetDemo = function() {
+    localStorage.removeItem("batchtrace.state.v1");
+    location.reload();
+  };
+
+  function render() {
+    var totalP = S.lots.reduce(function(a, l) { return a + Number(l.mt); }, 0);
+    var allocs = 28.0; // Sample allocation
+    var bal = totalP - allocs;
+    document.getElementById("subBalance").textContent = bal + " MT";
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>

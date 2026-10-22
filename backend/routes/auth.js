@@ -45,7 +45,7 @@ router.post('/register', async (req, res) => {
     const newUser = await pool.query(
       `INSERT INTO users (name, email, password, phone, address, city, state, pincode, ip_address)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-       RETURNING id, name, email, role, phone, address, city, state, pincode`,
+       RETURNING id, name, email, role, phone, address, city, state, pincode, token_version`,
       [
         name.trim(),
         cleanEmail,
@@ -61,7 +61,7 @@ router.post('/register', async (req, res) => {
 
     // Generate JWT Token (valid 7 days)
     const token = jwt.sign(
-      { id: newUser.rows[0].id, role: newUser.rows[0].role },
+      { id: newUser.rows[0].id, role: newUser.rows[0].role, token_version: newUser.rows[0].token_version || 1 },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -107,7 +107,7 @@ router.post('/login', async (req, res) => {
 
     // Generate JWT Token
     const token = jwt.sign(
-      { id: user.rows[0].id, role: user.rows[0].role },
+      { id: user.rows[0].id, role: user.rows[0].role, token_version: user.rows[0].token_version || 1 },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -246,26 +246,45 @@ router.post('/reset-password', async (req, res) => {
     const userId = userResult.rows[0].id;
 
     // Check for a valid, unused, non-expired code
-    const codeResult = await pool.query(
-      `SELECT id FROM password_reset_codes
-       WHERE user_id = $1 AND code = $2 AND used = false AND expires_at > NOW()
+    const activeCode = await pool.query(
+      `SELECT id, code, attempts FROM password_reset_codes
+       WHERE user_id = $1 AND used = false AND expires_at > NOW()
        ORDER BY created_at DESC LIMIT 1`,
-      [userId, code.trim()]
+      [userId]
     );
 
-    if (codeResult.rows.length === 0) {
-      return res.status(400).json({ error: 'Invalid or expired code.' });
+    if (activeCode.rows.length === 0) {
+      return res.status(400).json({ error: 'No active password reset request found or code has expired.' });
+    }
+
+    const currentRecord = activeCode.rows[0];
+
+    // Lockout check: max 5 failed attempts per OTP code to prevent brute force
+    if ((currentRecord.attempts || 0) >= 5) {
+      await pool.query('UPDATE password_reset_codes SET used = true WHERE id = $1', [currentRecord.id]);
+      return res.status(400).json({ error: 'Too many incorrect attempts. Please request a new reset code.' });
+    }
+
+    // Verify code
+    if (currentRecord.code !== code.trim()) {
+      await pool.query('UPDATE password_reset_codes SET attempts = COALESCE(attempts, 0) + 1 WHERE id = $1', [currentRecord.id]);
+      const remaining = 4 - (currentRecord.attempts || 0);
+      return res.status(400).json({
+        error: remaining > 0
+          ? `Invalid code. ${remaining} attempts remaining before code is invalidated.`
+          : 'Invalid code. Too many attempts. Please request a new code.'
+      });
     }
 
     // Mark the code as used immediately
     await pool.query('UPDATE password_reset_codes SET used = true WHERE id = $1', [
-      codeResult.rows[0].id,
+      currentRecord.id,
     ]);
 
-    // Hash the new password and update
+    // Hash the new password and update; increment token_version to revoke existing sessions
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(newPassword, salt);
-    await pool.query('UPDATE users SET password = $1 WHERE id = $2', [hashedPassword, userId]);
+    await pool.query('UPDATE users SET password = $1, token_version = COALESCE(token_version, 1) + 1 WHERE id = $2', [hashedPassword, userId]);
 
     res.json({ message: 'Password has been reset successfully.' });
   } catch (err) {
@@ -357,10 +376,10 @@ router.put('/change-password', auth, async (req, res) => {
       return res.status(400).json({ error: 'Current password is incorrect.' });
     }
 
-    // Hash and update new password
+    // Hash and update new password; increment token_version to revoke existing sessions
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(newPassword, salt);
-    await pool.query('UPDATE users SET password = $1 WHERE id = $2', [hashedPassword, req.user.id]);
+    await pool.query('UPDATE users SET password = $1, token_version = COALESCE(token_version, 1) + 1 WHERE id = $2', [hashedPassword, req.user.id]);
 
     res.json({ message: 'Password changed successfully.' });
   } catch (err) {

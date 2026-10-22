@@ -17,6 +17,9 @@ const authMiddleware = require('./middleware/auth');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Trust reverse proxy (Render, Vercel, Cloudflare) for accurate req.ip in rate limiters
+app.set('trust proxy', 1);
+
 // ── Security Headers via Helmet ────────────────────────────────
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },

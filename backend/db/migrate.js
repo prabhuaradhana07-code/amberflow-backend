@@ -35,6 +35,7 @@ async function migrate() {
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS pincode VARCHAR(20);`);
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS ip_address VARCHAR(45);`);
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_approved_vendor BOOLEAN DEFAULT false;`);
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS token_version INTEGER DEFAULT 1;`);
     console.log('✅  users table ready');
 
     // ── Vendor Details table ───────────────────────────────────
@@ -138,6 +139,7 @@ async function migrate() {
         created_at TIMESTAMP DEFAULT NOW()
       );
     `);
+    await client.query(`ALTER TABLE password_reset_codes ADD COLUMN IF NOT EXISTS attempts INTEGER DEFAULT 0;`);
     console.log('✅  password_reset_codes table ready');
 
     // ── Promo Usage table (one-time per user per code) ────────
