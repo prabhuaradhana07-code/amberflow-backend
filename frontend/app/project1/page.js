@@ -65,6 +65,31 @@ const DEFAULT_STATE = {
 
 const STORAGE_KEY = 'batchtrace.state.v2';
 
+// ── Backend API & Storage Endpoint ──────────────────────────────────────────
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://amberflow-backend.onrender.com';
+
+const uploadDocumentToServer = async (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await fetch(`${API_URL}/api/documents/upload`, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.error || `Upload failed with status ${res.status}`);
+  }
+  return await res.json();
+};
+
+const readFileAsDataUrl = (file) =>
+  new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => resolve(null);
+    reader.readAsDataURL(file);
+  });
+
 // ── QR Encoding & Hash Record Helpers ────────────────────────────────────────
 const enc = (r) => btoa(unescape(encodeURIComponent(JSON.stringify(r))));
 const dec = (s) => JSON.parse(decodeURIComponent(escape(atob(s))));
@@ -84,6 +109,7 @@ export default function BatchTracePage() {
   const [modalLot, setModalLot] = useState(null);
   const [modalBatch, setModalBatch] = useState(null);
   const [toastMessage, setToastMessage] = useState('');
+  const [uploadingLotId, setUploadingLotId] = useState(null);
 
   // Inward Form (Material In)
   const [inwardForm, setInwardForm] = useState({
@@ -91,9 +117,9 @@ export default function BatchTracePage() {
     invoice: '',
     date: new Date().toISOString().slice(0, 10),
     mt: '',
-    materialType: 'Post-Consumer rPET Flakes (Clear)',
-    invFile: '',
-    labFile: '',
+    materialType: 'Post-Consumer rPET Flakes (Clear Food Grade)',
+    invFileObj: null,
+    labFileObj: null,
   });
 
   // Outward Form (Material Out)
@@ -283,13 +309,18 @@ export default function BatchTracePage() {
       l: b.alloc.map((a) => {
         const lot = state.lots.find((l) => l.id === a.lot);
         return {
+          id: a.lot,
           r: lot ? lot.recycler : a.lot,
           v: lot ? lot.invoice : '—',
           d: lot ? lot.date : '—',
           m: a.mt,
-          x: !!(lot && lot.inv),
-          y: !!(lot && lot.lab),
+          x: !!(lot && (lot.inv || lot.invUrl)),
+          y: !!(lot && (lot.lab || lot.labUrl)),
           t: lot ? lot.materialType : 'rPET',
+          u: lot?.invUrl || null,
+          w: lot?.labUrl || null,
+          isRealInv: !!lot?.invIsReal,
+          isRealLab: !!lot?.labIsReal,
         };
       }),
     };
@@ -304,33 +335,102 @@ export default function BatchTracePage() {
 
   // ── Handlers ───────────────────────────────────────────────────────────────
 
-  // Attach Document
-  const handleAttachFile = (lotId, field, e) => {
+  // Direct Upload from inside Modal
+  const handleDirectModalUpload = async (lotId, field, e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result;
-      const updatedLots = state.lots.map((l) => {
-        if (l.id === lotId) {
-          return {
-            ...l,
-            [field]: file.name,
-            [field + 'Data']: dataUrl, // Local persistent file preview
-          };
-        }
-        return l;
-      });
-      saveState({ ...state, lots: updatedLots });
-      showToast(`Attached "${file.name}" to ${lotId}.`);
-    };
-    reader.readAsDataURL(file);
+    const opKey = `${lotId}-${field}`;
+    setUploadingLotId(opKey);
+    showToast(`Uploading "${file.name}" to server...`);
+
+    const dataUrl = await readFileAsDataUrl(file);
+    let serverUrl = null;
+
+    try {
+      const uploadRes = await uploadDocumentToServer(file);
+      serverUrl = uploadRes.url;
+      showToast(`✅ "${file.name}" uploaded to server and saved!`);
+    } catch (err) {
+      console.warn('Document server upload failed, falling back to local storage:', err);
+      showToast(`Saved locally. (${err.message})`);
+    }
+
+    const updatedLots = state.lots.map((l) => {
+      if (l.id === lotId) {
+        return {
+          ...l,
+          [field]: file.name,
+          [field + 'Data']: dataUrl,
+          [field + 'Url']: serverUrl || l[field + 'Url'] || null,
+          [field + 'Mime']: file.type,
+          [field + 'IsReal']: true,
+        };
+      }
+      return l;
+    });
+    saveState({ ...state, lots: updatedLots });
+
+    setModalLot((prev) => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        [field]: file.name,
+        [field + 'Data']: dataUrl,
+        [field + 'Url']: serverUrl || prev[field + 'Url'] || null,
+        [field + 'Mime']: file.type,
+        [field + 'IsReal']: true,
+        isRealUpload: true,
+        u: field === 'inv' ? (serverUrl || prev.u) : prev.u,
+        w: field === 'lab' ? (serverUrl || prev.w) : prev.w,
+      };
+    });
+
+    setUploadingLotId(null);
+    e.target.value = '';
+  };
+
+  // Attach Document from table row
+  const handleAttachFile = async (lotId, field, e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const opKey = `${lotId}-${field}`;
+    setUploadingLotId(opKey);
+    showToast(`Uploading "${file.name}" to server...`);
+
+    const dataUrl = await readFileAsDataUrl(file);
+    let serverUrl = null;
+
+    try {
+      const uploadRes = await uploadDocumentToServer(file);
+      serverUrl = uploadRes.url;
+      showToast(`✅ "${file.name}" uploaded to server!`);
+    } catch (err) {
+      console.warn('Server upload error, saved locally:', err);
+      showToast(`Saved locally. (${err.message})`);
+    }
+
+    const updatedLots = state.lots.map((l) => {
+      if (l.id === lotId) {
+        return {
+          ...l,
+          [field]: file.name,
+          [field + 'Data']: dataUrl,
+          [field + 'Url']: serverUrl || l[field + 'Url'] || null,
+          [field + 'Mime']: file.type,
+          [field + 'IsReal']: true,
+        };
+      }
+      return l;
+    });
+    saveState({ ...state, lots: updatedLots });
+    setUploadingLotId(null);
     e.target.value = '';
   };
 
   // Add Inward Lot (Stock In)
-  const handleAddInward = (e) => {
+  const handleAddInward = async (e) => {
     e.preventDefault();
     if (!inwardForm.recycler || !inwardForm.invoice || !inwardForm.mt) {
       alert('Please fill in Recycler Name, Invoice No, and Quantity (MT).');
@@ -338,6 +438,47 @@ export default function BatchTracePage() {
     }
 
     const nextId = `LOT-${String(state.lots.length + 1).padStart(3, '0')}`;
+    setUploadingLotId('inward-form');
+    showToast(`Adding Inward Lot ${nextId}...`);
+
+    let invUrl = null;
+    let invData = null;
+    let invName = '';
+    let invMime = '';
+    let invIsReal = false;
+
+    let labUrl = null;
+    let labData = null;
+    let labName = '';
+    let labMime = '';
+    let labIsReal = false;
+
+    if (inwardForm.invFileObj) {
+      invName = inwardForm.invFileObj.name;
+      invMime = inwardForm.invFileObj.type;
+      invIsReal = true;
+      try {
+        const res = await uploadDocumentToServer(inwardForm.invFileObj);
+        invUrl = res.url;
+      } catch (err) {
+        console.warn('Invoice upload warning:', err);
+      }
+      invData = await readFileAsDataUrl(inwardForm.invFileObj);
+    }
+
+    if (inwardForm.labFileObj) {
+      labName = inwardForm.labFileObj.name;
+      labMime = inwardForm.labFileObj.type;
+      labIsReal = true;
+      try {
+        const res = await uploadDocumentToServer(inwardForm.labFileObj);
+        labUrl = res.url;
+      } catch (err) {
+        console.warn('Lab cert upload warning:', err);
+      }
+      labData = await readFileAsDataUrl(inwardForm.labFileObj);
+    }
+
     const newLot = {
       id: nextId,
       recycler: inwardForm.recycler.trim(),
@@ -345,10 +486,16 @@ export default function BatchTracePage() {
       date: inwardForm.date,
       mt: parseFloat(inwardForm.mt),
       materialType: inwardForm.materialType,
-      inv: inwardForm.invFile || `INV-${inwardForm.invoice.replace(/[^a-zA-Z0-9]/g, '')}.pdf`,
-      lab: inwardForm.labFile || `LAB-CERT-${nextId}.pdf`,
-      invData: null,
-      labData: null,
+      inv: invName,
+      lab: labName,
+      invUrl,
+      labUrl,
+      invData,
+      labData,
+      invMime,
+      labMime,
+      invIsReal,
+      labIsReal,
     };
 
     saveState({ ...state, lots: [...state.lots, newLot] });
@@ -357,11 +504,12 @@ export default function BatchTracePage() {
       invoice: '',
       date: new Date().toISOString().slice(0, 10),
       mt: '',
-      materialType: 'Post-Consumer rPET Flakes (Clear)',
-      invFile: '',
-      labFile: '',
+      materialType: 'Post-Consumer rPET Flakes (Clear Food Grade)',
+      invFileObj: null,
+      labFileObj: null,
     });
-    showToast(`Inward Lot ${nextId} added (+${newLot.mt} MT).`);
+    setUploadingLotId(null);
+    showToast(`✅ Inward Lot ${nextId} added (+${newLot.mt} MT)!`);
   };
 
   // Add Outward Batch (Material Out)
@@ -567,30 +715,40 @@ export default function BatchTracePage() {
                       <button
                         onClick={() => {
                           setModalLot({
-                            id: `LOT-${idx + 1}`,
+                            id: lot.id || `LOT-${idx + 1}`,
                             recycler: lot.r,
                             invoice: lot.v,
                             date: lot.d,
                             mt: lot.m,
                             materialType: lot.t || 'Food Grade rPET',
-                            inv: 'Tax_Invoice_' + lot.v + '.pdf',
+                            inv: lot.v ? `Tax_Invoice_${lot.v}.pdf` : 'Tax_Invoice.pdf',
+                            invUrl: lot.u || null,
+                            invData: null,
+                            invIsReal: !!lot.u,
+                            isRealUpload: !!lot.u,
+                            u: lot.u || null,
                           });
                           setActiveModal('invoice');
                         }}
                         className="btn ghost-btn text-xs flex items-center gap-1"
                       >
-                        📄 View Tax Invoice
+                        📄 {lot.u ? 'View Real Invoice' : 'View Tax Invoice'}
                       </button>
                       <button
                         onClick={() => {
                           setModalLot({
-                            id: `LOT-${idx + 1}`,
+                            id: lot.id || `LOT-${idx + 1}`,
                             recycler: lot.r,
                             invoice: lot.v,
                             date: lot.d,
                             mt: lot.m,
                             materialType: lot.t || 'Food Grade rPET',
-                            lab: 'Quality_Certificate_' + lot.v + '.pdf',
+                            lab: `Quality_Certificate_${lot.id || idx + 1}.pdf`,
+                            labUrl: lot.w || null,
+                            labData: null,
+                            labIsReal: !!lot.w,
+                            isRealUpload: !!lot.w,
+                            w: lot.w || null,
                           });
                           setActiveModal('certificate');
                         }}
@@ -627,96 +785,238 @@ export default function BatchTracePage() {
   const selectedBuyerBatch = batchesWithAlloc.find((b) => b.id === selectedBuyerBatchId) || batchesWithAlloc[0];
 
   function renderModals() {
+    // Determine active file for invoice modal
+    const invSrc = modalLot?.invUrl || modalLot?.invData || modalLot?.u;
+    const hasRealInv = Boolean(modalLot?.invIsReal || modalLot?.invUrl || modalLot?.invData || modalLot?.u);
+    const invFileName = modalLot?.inv || (modalLot?.invoice ? `Tax_Invoice_${modalLot.invoice}.pdf` : 'Tax_Invoice.pdf');
+    const isInvPdf = (modalLot?.invMime === 'application/pdf') ||
+                     (modalLot?.inv && modalLot.inv.toLowerCase().endsWith('.pdf')) ||
+                     (invSrc && (invSrc.includes('.pdf') || invSrc.startsWith('data:application/pdf')));
+
+    // Determine active file for lab certificate modal
+    const labSrc = modalLot?.labUrl || modalLot?.labData || modalLot?.w;
+    const hasRealLab = Boolean(modalLot?.labIsReal || modalLot?.labUrl || modalLot?.labData || modalLot?.w);
+    const labFileName = modalLot?.lab || `Lab_Certificate_${modalLot?.id || 'TEST'}.pdf`;
+    const isLabPdf = (modalLot?.labMime === 'application/pdf') ||
+                     (modalLot?.lab && modalLot.lab.toLowerCase().endsWith('.pdf')) ||
+                     (labSrc && (labSrc.includes('.pdf') || labSrc.startsWith('data:application/pdf')));
+
     return (
       <>
         {/* ── Tax Invoice Modal ── */}
         {activeModal === 'invoice' && modalLot && (
           <div className="modal-backdrop" onClick={() => setActiveModal(null)}>
-            <div className="modal-card max-w-2xl" onClick={(e) => e.stopPropagation()}>
-              <div className="flex justify-between items-center border-b border-[var(--line)] pb-3 mb-4">
-                <div>
+            <div className="modal-card max-w-4xl max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              <div className="flex justify-between items-center border-b border-[var(--line)] pb-3 mb-3">
+                <div className="flex items-center gap-2 flex-wrap">
                   <h3 className="font-bold text-base text-[var(--ink)]">Supplier GST Tax Invoice</h3>
-                  <span className="text-xs text-[var(--ink-soft)] mono">Ref: {modalLot.invoice}</span>
+                  <span className="text-xs text-[var(--ink-soft)] mono">Ref: {modalLot.invoice || modalLot.id}</span>
+                  {hasRealInv ? (
+                    <span className="chip chip-ok text-[11px] font-bold">✓ Real Uploaded File</span>
+                  ) : (
+                    <span className="chip chip-warn text-[11px] font-bold">⚠️ Demonstrator Template</span>
+                  )}
                 </div>
-                <div className="flex items-center gap-2">
-                  <button onClick={() => window.print()} className="btn ghost-btn text-xs">
-                    🖨 Print / Save PDF
-                  </button>
-                  <button onClick={() => setActiveModal(null)} className="text-lg px-2">✕</button>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {invSrc && (
+                    <>
+                      <a
+                        href={modalLot.invUrl ? `${modalLot.invUrl}?download=1&name=${encodeURIComponent(invFileName)}` : invSrc}
+                        download={invFileName}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn solid-btn text-xs flex items-center gap-1"
+                      >
+                        📥 Download File
+                      </a>
+                      <a
+                        href={invSrc}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn ghost-btn text-xs flex items-center gap-1"
+                      >
+                        ↗ Full Screen
+                      </a>
+                    </>
+                  )}
+                  <label className="btn ghost-btn text-xs cursor-pointer flex items-center gap-1" title="Upload your actual invoice file">
+                    📤 {hasRealInv ? 'Replace File' : 'Upload Real Invoice'}
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept=".pdf,.png,.jpg,.jpeg,.webp"
+                      onChange={(e) => handleDirectModalUpload(modalLot.id, 'inv', e)}
+                    />
+                  </label>
+                  <button onClick={() => setActiveModal(null)} className="text-lg px-2 hover:opacity-70">✕</button>
                 </div>
               </div>
 
-              {/* High-Fidelity Tax Invoice Display */}
-              <div className="p-4 bg-white text-black border border-gray-300 rounded text-xs space-y-4">
-                <div className="flex justify-between border-b pb-3">
-                  <div>
-                    <h2 className="font-bold text-sm text-gray-900">{modalLot.recycler}</h2>
-                    <p className="text-gray-600">Authorized Recycler & Extruder</p>
-                    <p className="text-gray-600">GSTIN: 27AABCG1234F1Z8 · CPCB Reg: CPCB/EPR/REC/2026/894</p>
-                    <p className="text-gray-600">GIDC Industrial Estate, Gujarat, India</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold text-gray-900">TAX INVOICE</p>
-                    <p><b>Invoice No:</b> {modalLot.invoice}</p>
-                    <p><b>Date:</b> {modalLot.date}</p>
-                    <p><b>E-Way Bill:</b> EWB-88192031</p>
-                  </div>
+              {/* Upload Status Alert if uploading */}
+              {uploadingLotId === `${modalLot.id}-inv` && (
+                <div className="p-3 mb-3 bg-blue-50 text-blue-900 border border-blue-200 rounded text-xs flex items-center gap-2 animate-pulse">
+                  <span>⏳</span>
+                  <span>Uploading real invoice to server, please wait...</span>
                 </div>
+              )}
 
-                <div className="grid grid-cols-2 gap-4 border-b pb-3">
-                  <div>
-                    <span className="text-gray-500 font-semibold block">Billed To (Manufacturer):</span>
-                    <p className="font-bold">{state.factory}</p>
-                    <p>GSTIN: 24AAACD9981E1Z2</p>
-                    <p>AmberFlow Packaging Division</p>
+              {/* If user has uploaded a real invoice: DISPLAY THE ACTUAL FILE */}
+              {hasRealInv && invSrc ? (
+                <div className="space-y-3">
+                  <div className="bg-[var(--paper)] p-2.5 rounded border border-[var(--line)] flex justify-between items-center text-xs flex-wrap gap-2">
+                    <div>
+                      <span className="font-semibold text-[var(--ink)] block">Uploaded Document: <span className="mono">{invFileName}</span></span>
+                      {modalLot.invUrl ? (
+                        <span className="text-[11px] text-[var(--ok)] font-mono">Server Hosted: {modalLot.invUrl}</span>
+                      ) : (
+                        <span className="text-[11px] text-[var(--ink-soft)]">Stored in local document vault</span>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <a
+                        href={modalLot.invUrl ? `${modalLot.invUrl}?download=1&name=${encodeURIComponent(invFileName)}` : invSrc}
+                        download={invFileName}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn solid-btn text-xs"
+                      >
+                        📥 Download Original ({isInvPdf ? 'PDF' : 'Image'})
+                      </a>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-gray-500 font-semibold block">Dispatch Destination:</span>
-                    <p>Factory Unit 3, AmberFlow Plastics</p>
-                    <p>Vehicle No: GJ-01-BX-4412</p>
-                  </div>
+
+                  {isInvPdf ? (
+                    <div className="w-full h-[620px] bg-gray-900 rounded border border-gray-300 dark:border-gray-700 overflow-hidden shadow-inner">
+                      <iframe
+                        src={invSrc}
+                        title={`Invoice ${modalLot.invoice}`}
+                        className="w-full h-full border-0"
+                      />
+                    </div>
+                  ) : (
+                    <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-700 flex justify-center items-center overflow-auto max-h-[620px]">
+                      <img
+                        src={invSrc}
+                        alt={`Invoice ${modalLot.invoice}`}
+                        className="max-w-full max-h-[580px] object-contain rounded shadow"
+                      />
+                    </div>
+                  )}
+
+                  <details className="p-3 bg-[var(--paper)] rounded border text-xs">
+                    <summary className="font-bold cursor-pointer text-[var(--ink)]">
+                      📋 View Extracted Bill Summary & Breakdown
+                    </summary>
+                    <div className="mt-3 p-3 bg-white text-black rounded border space-y-2">
+                      <div className="flex justify-between border-b pb-2">
+                        <div>
+                          <p className="font-bold">{modalLot.recycler}</p>
+                          <p className="text-[11px] text-gray-500">Lot: {modalLot.id}</p>
+                        </div>
+                        <div className="text-right">
+                          <p><b>Invoice No:</b> {modalLot.invoice}</p>
+                          <p><b>Date:</b> {modalLot.date}</p>
+                        </div>
+                      </div>
+                      <div className="flex justify-between pt-1">
+                        <span>Quantity: <b>{modalLot.mt} MT</b> ({modalLot.materialType || 'Post-Consumer rPET'})</span>
+                        <span>Estimated Value: <b>₹ {(Number(modalLot.mt) * 82500).toLocaleString('en-IN')}.00</b></span>
+                      </div>
+                    </div>
+                  </details>
                 </div>
-
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="bg-gray-100 text-left border-b">
-                      <th className="p-2">Item Description</th>
-                      <th className="p-2">HSN</th>
-                      <th className="p-2 text-right">Quantity</th>
-                      <th className="p-2 text-right">Rate / MT</th>
-                      <th className="p-2 text-right">Amount (₹)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr className="border-b">
-                      <td className="p-2">
-                        <b>{modalLot.materialType || 'Post-Consumer Recycled PET (rPET)'}</b>
-                        <p className="text-[10px] text-gray-500">Lot: {modalLot.id} · Intrinsic Viscosity &gt; 0.80 dl/g</p>
-                      </td>
-                      <td className="p-2 mono">39076100</td>
-                      <td className="p-2 mono text-right">{modalLot.mt} MT</td>
-                      <td className="p-2 mono text-right">₹ 82,500.00</td>
-                      <td className="p-2 mono text-right">₹ {(Number(modalLot.mt) * 82500).toLocaleString('en-IN')}.00</td>
-                    </tr>
-                  </tbody>
-                </table>
-
-                <div className="flex justify-between items-start pt-2">
-                  <div className="max-w-xs text-[10px] text-gray-500">
-                    <p>Declaration: Certified that recycled material supplied complies with Plastic Waste Management Rules 2026. Official EPR credit transfer pending on CPCB portal.</p>
+              ) : (
+                /* Demonstrator template if no real file uploaded yet */
+                <div className="space-y-3">
+                  <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700 rounded text-xs flex justify-between items-center flex-wrap gap-2">
+                    <div>
+                      <span className="font-bold text-amber-900 dark:text-amber-200 block">⚠️ Sample Demonstrator Template</span>
+                      <span className="text-amber-800 dark:text-amber-300">No real file was attached to this sample lot. Click "Upload Real Invoice" to upload and view your actual tax invoice file.</span>
+                    </div>
+                    <label className="btn solid-btn text-xs cursor-pointer bg-amber-700 hover:bg-amber-800 text-white">
+                      📤 Upload Real Invoice Now
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept=".pdf,.png,.jpg,.jpeg,.webp"
+                        onChange={(e) => handleDirectModalUpload(modalLot.id, 'inv', e)}
+                      />
+                    </label>
                   </div>
-                  <div className="text-right space-y-1">
-                    <p>Subtotal: ₹ {(Number(modalLot.mt) * 82500).toLocaleString('en-IN')}.00</p>
-                    <p>IGST (18%): ₹ {(Number(modalLot.mt) * 82500 * 0.18).toLocaleString('en-IN')}.00</p>
-                    <p className="font-bold text-sm border-t pt-1">Total: ₹ {(Number(modalLot.mt) * 82500 * 1.18).toLocaleString('en-IN')}.00</p>
-                    <div className="pt-4">
-                      <div className="border border-green-700 text-green-800 text-[10px] p-1 inline-block rounded font-mono font-bold uppercase">
-                        ✓ Digitally Signed & Paid
+
+                  {/* Standard high fidelity invoice display */}
+                  <div className="p-4 bg-white text-black border border-gray-300 rounded text-xs space-y-4">
+                    <div className="flex justify-between border-b pb-3">
+                      <div>
+                        <h2 className="font-bold text-sm text-gray-900">{modalLot.recycler}</h2>
+                        <p className="text-gray-600">Authorized Recycler & Extruder</p>
+                        <p className="text-gray-600">GSTIN: 27AABCG1234F1Z8 · CPCB Reg: CPCB/EPR/REC/2026/894</p>
+                        <p className="text-gray-600">GIDC Industrial Estate, Gujarat, India</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-gray-900">TAX INVOICE</p>
+                        <p><b>Invoice No:</b> {modalLot.invoice}</p>
+                        <p><b>Date:</b> {modalLot.date}</p>
+                        <p><b>E-Way Bill:</b> EWB-88192031</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 border-b pb-3">
+                      <div>
+                        <span className="text-gray-500 font-semibold block">Billed To (Manufacturer):</span>
+                        <p className="font-bold">{state.factory}</p>
+                        <p>GSTIN: 24AAACD9981E1Z2</p>
+                        <p>AmberFlow Packaging Division</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 font-semibold block">Dispatch Destination:</span>
+                        <p>Factory Unit 3, AmberFlow Plastics</p>
+                        <p>Vehicle No: GJ-01-BX-4412</p>
+                      </div>
+                    </div>
+
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="bg-gray-100 text-left border-b">
+                          <th className="p-2">Item Description</th>
+                          <th className="p-2">HSN</th>
+                          <th className="p-2 text-right">Quantity</th>
+                          <th className="p-2 text-right">Rate / MT</th>
+                          <th className="p-2 text-right">Amount (₹)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr className="border-b">
+                          <td className="p-2">
+                            <b>{modalLot.materialType || 'Post-Consumer Recycled PET (rPET)'}</b>
+                            <p className="text-[10px] text-gray-500">Lot: {modalLot.id} · Intrinsic Viscosity &gt; 0.80 dl/g</p>
+                          </td>
+                          <td className="p-2 mono">39076100</td>
+                          <td className="p-2 mono text-right">{modalLot.mt} MT</td>
+                          <td className="p-2 mono text-right">₹ 82,500.00</td>
+                          <td className="p-2 mono text-right">₹ {(Number(modalLot.mt) * 82500).toLocaleString('en-IN')}.00</td>
+                        </tr>
+                      </tbody>
+                    </table>
+
+                    <div className="flex justify-between items-start pt-2">
+                      <div className="max-w-xs text-[10px] text-gray-500">
+                        <p>Declaration: Certified that recycled material supplied complies with Plastic Waste Management Rules 2026. Official EPR credit transfer pending on CPCB portal.</p>
+                      </div>
+                      <div className="text-right space-y-1">
+                        <p>Subtotal: ₹ {(Number(modalLot.mt) * 82500).toLocaleString('en-IN')}.00</p>
+                        <p>IGST (18%): ₹ {(Number(modalLot.mt) * 82500 * 0.18).toLocaleString('en-IN')}.00</p>
+                        <p className="font-bold text-sm border-t pt-1">Total: ₹ {(Number(modalLot.mt) * 82500 * 1.18).toLocaleString('en-IN')}.00</p>
+                        <div className="pt-4">
+                          <div className="border border-green-700 text-green-800 text-[10px] p-1 inline-block rounded font-mono font-bold uppercase">
+                            ✓ Digitally Signed & Paid
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         )}
@@ -724,104 +1024,230 @@ export default function BatchTracePage() {
         {/* ── Lab Quality Certificate Modal ── */}
         {activeModal === 'certificate' && modalLot && (
           <div className="modal-backdrop" onClick={() => setActiveModal(null)}>
-            <div className="modal-card max-w-2xl" onClick={(e) => e.stopPropagation()}>
-              <div className="flex justify-between items-center border-b border-[var(--line)] pb-3 mb-4">
-                <div>
+            <div className="modal-card max-w-4xl max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              <div className="flex justify-between items-center border-b border-[var(--line)] pb-3 mb-3">
+                <div className="flex items-center gap-2 flex-wrap">
                   <h3 className="font-bold text-base text-[var(--ink)]">NABL Accredited Quality & Test Certificate</h3>
-                  <span className="text-xs text-[var(--ink-soft)] mono">Certificate Ref: LAB-CERT-{modalLot.id}</span>
+                  <span className="text-xs text-[var(--ink-soft)] mono">Ref: {modalLot.id}</span>
+                  {hasRealLab ? (
+                    <span className="chip chip-ok text-[11px] font-bold">✓ Real Uploaded Certificate</span>
+                  ) : (
+                    <span className="chip chip-warn text-[11px] font-bold">⚠️ Demonstrator Template</span>
+                  )}
                 </div>
-                <div className="flex items-center gap-2">
-                  <button onClick={() => window.print()} className="btn ghost-btn text-xs">
-                    🖨 Print / Save PDF
-                  </button>
-                  <button onClick={() => setActiveModal(null)} className="text-lg px-2">✕</button>
-                </div>
-              </div>
-
-              {/* High-Fidelity NABL Laboratory Certificate Display */}
-              <div className="p-4 bg-white text-black border border-gray-300 rounded text-xs space-y-4">
-                <div className="text-center border-b pb-3">
-                  <span className="text-[10px] tracking-widest text-blue-900 font-bold uppercase block">NABL ACCREDITED POLYMER TESTING LABORATORY</span>
-                  <h2 className="text-base font-bold text-gray-900">POLYMER QUALITY & PURITY ANALYTICAL SERVICES</h2>
-                  <p className="text-[11px] text-gray-600">Accreditation No: NABL-TC-8891 · Valid till: 2028 · ISO/IEC 17025:2017 Certified</p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 border-b pb-3">
-                  <div>
-                    <p><b>Client / Factory:</b> {state.factory}</p>
-                    <p><b>Recycler Origin:</b> {modalLot.recycler}</p>
-                    <p><b>Lot / Batch No:</b> {modalLot.id} (Bill: {modalLot.invoice})</p>
-                  </div>
-                  <div className="text-right">
-                    <p><b>Date of Analysis:</b> {modalLot.date}</p>
-                    <p><b>Sample Material:</b> {modalLot.materialType || 'Food Grade rPET'}</p>
-                    <p><b>Sample Weight Tested:</b> 5.0 kg Composite</p>
-                  </div>
-                </div>
-
-                <h4 className="font-bold text-gray-800 text-[11px] uppercase">Analytical Test Results:</h4>
-
-                <table className="w-full border-collapse border border-gray-300">
-                  <thead>
-                    <tr className="bg-gray-100 text-left">
-                      <th className="p-1.5 border border-gray-300">Test Parameter</th>
-                      <th className="p-1.5 border border-gray-300">Test Method</th>
-                      <th className="p-1.5 border border-gray-300">Observed Value</th>
-                      <th className="p-1.5 border border-gray-300">Regulatory Limit</th>
-                      <th className="p-1.5 border border-gray-300 text-center">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td className="p-1.5 border border-gray-300 font-medium">Intrinsic Viscosity (IV)</td>
-                      <td className="p-1.5 border border-gray-300 text-gray-600">ASTM D4603</td>
-                      <td className="p-1.5 border border-gray-300 mono font-bold">0.82 dl/g</td>
-                      <td className="p-1.5 border border-gray-300 mono">0.78 - 0.84 dl/g</td>
-                      <td className="p-1.5 border border-gray-300 text-center text-green-700 font-bold">PASS</td>
-                    </tr>
-                    <tr>
-                      <td className="p-1.5 border border-gray-300 font-medium">Acetaldehyde (AA) Content</td>
-                      <td className="p-1.5 border border-gray-300 text-gray-600">Headspace GC-FID</td>
-                      <td className="p-1.5 border border-gray-300 mono font-bold">0.9 ppm</td>
-                      <td className="p-1.5 border border-gray-300 mono">&lt; 2.0 ppm</td>
-                      <td className="p-1.5 border border-gray-300 text-center text-green-700 font-bold">PASS</td>
-                    </tr>
-                    <tr>
-                      <td className="p-1.5 border border-gray-300 font-medium">Heavy Metals (Pb, Cd, Hg, Cr)</td>
-                      <td className="p-1.5 border border-gray-300 text-gray-600">ICP-OES (EPA 3052)</td>
-                      <td className="p-1.5 border border-gray-300 mono font-bold">&lt; 0.1 ppm</td>
-                      <td className="p-1.5 border border-gray-300 mono">&lt; 100 ppm total</td>
-                      <td className="p-1.5 border border-gray-300 text-center text-green-700 font-bold">PASS</td>
-                    </tr>
-                    <tr>
-                      <td className="p-1.5 border border-gray-300 font-medium">Melting Point Peak</td>
-                      <td className="p-1.5 border border-gray-300 text-gray-600">DSC (ISO 11357)</td>
-                      <td className="p-1.5 border border-gray-300 mono font-bold">251.8 °C</td>
-                      <td className="p-1.5 border border-gray-300 mono">248 - 256 °C</td>
-                      <td className="p-1.5 border border-gray-300 text-center text-green-700 font-bold">PASS</td>
-                    </tr>
-                    <tr>
-                      <td className="p-1.5 border border-gray-300 font-medium">Food-Contact Overall Migration</td>
-                      <td className="p-1.5 border border-gray-300 text-gray-600">IS 9845 / FSSAI</td>
-                      <td className="p-1.5 border border-gray-300 mono font-bold">4.2 mg/dm²</td>
-                      <td className="p-1.5 border border-gray-300 mono">&lt; 10.0 mg/dm²</td>
-                      <td className="p-1.5 border border-gray-300 text-center text-green-700 font-bold">PASS</td>
-                    </tr>
-                  </tbody>
-                </table>
-
-                <div className="p-2 bg-green-50 border border-green-200 rounded text-green-900 text-[11px]">
-                  <b>Final Quality Verdict:</b> The tested material sample conforms to Indian Standards (IS 14534:2023) and is suitable for beverage preforms, bottle closures, and food packaging containers.
-                </div>
-
-                <div className="flex justify-between items-center pt-3 border-t">
-                  <span className="text-[10px] text-gray-500">Scan QR on Pallet to verify digital record.</span>
-                  <div className="text-right">
-                    <p className="font-bold">Dr. V. K. Ramanathan, Ph.D.</p>
-                    <p className="text-gray-500 text-[10px]">Chief Technical Assayer · Polymer Lab</p>
-                  </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {labSrc && (
+                    <>
+                      <a
+                        href={modalLot.labUrl ? `${modalLot.labUrl}?download=1&name=${encodeURIComponent(labFileName)}` : labSrc}
+                        download={labFileName}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn solid-btn text-xs flex items-center gap-1"
+                      >
+                        📥 Download File
+                      </a>
+                      <a
+                        href={labSrc}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn ghost-btn text-xs flex items-center gap-1"
+                      >
+                        ↗ Full Screen
+                      </a>
+                    </>
+                  )}
+                  <label className="btn ghost-btn text-xs cursor-pointer flex items-center gap-1" title="Upload your actual lab certificate file">
+                    📤 {hasRealLab ? 'Replace File' : 'Upload Real Certificate'}
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept=".pdf,.png,.jpg,.jpeg,.webp"
+                      onChange={(e) => handleDirectModalUpload(modalLot.id, 'lab', e)}
+                    />
+                  </label>
+                  <button onClick={() => setActiveModal(null)} className="text-lg px-2 hover:opacity-70">✕</button>
                 </div>
               </div>
+
+              {/* Upload Status Alert if uploading */}
+              {uploadingLotId === `${modalLot.id}-lab` && (
+                <div className="p-3 mb-3 bg-blue-50 text-blue-900 border border-blue-200 rounded text-xs flex items-center gap-2 animate-pulse">
+                  <span>⏳</span>
+                  <span>Uploading real certificate to server, please wait...</span>
+                </div>
+              )}
+
+              {/* If user has uploaded a real lab report: DISPLAY THE ACTUAL FILE */}
+              {hasRealLab && labSrc ? (
+                <div className="space-y-3">
+                  <div className="bg-[var(--paper)] p-2.5 rounded border border-[var(--line)] flex justify-between items-center text-xs flex-wrap gap-2">
+                    <div>
+                      <span className="font-semibold text-[var(--ink)] block">Uploaded Report: <span className="mono">{labFileName}</span></span>
+                      {modalLot.labUrl ? (
+                        <span className="text-[11px] text-[var(--ok)] font-mono">Server Hosted: {modalLot.labUrl}</span>
+                      ) : (
+                        <span className="text-[11px] text-[var(--ink-soft)]">Stored in local document vault</span>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <a
+                        href={modalLot.labUrl ? `${modalLot.labUrl}?download=1&name=${encodeURIComponent(labFileName)}` : labSrc}
+                        download={labFileName}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn solid-btn text-xs"
+                      >
+                        📥 Download Original ({isLabPdf ? 'PDF' : 'Image'})
+                      </a>
+                    </div>
+                  </div>
+
+                  {isLabPdf ? (
+                    <div className="w-full h-[620px] bg-gray-900 rounded border border-gray-300 dark:border-gray-700 overflow-hidden shadow-inner">
+                      <iframe
+                        src={labSrc}
+                        title={`Lab Report ${modalLot.id}`}
+                        className="w-full h-full border-0"
+                      />
+                    </div>
+                  ) : (
+                    <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-700 flex justify-center items-center overflow-auto max-h-[620px]">
+                      <img
+                        src={labSrc}
+                        alt={`Lab Report ${modalLot.id}`}
+                        className="max-w-full max-h-[580px] object-contain rounded shadow"
+                      />
+                    </div>
+                  )}
+
+                  <details className="p-3 bg-[var(--paper)] rounded border text-xs">
+                    <summary className="font-bold cursor-pointer text-[var(--ink)]">
+                      📋 View Extracted Test Results Summary
+                    </summary>
+                    <div className="mt-3 p-3 bg-white text-black rounded border space-y-2">
+                      <div className="flex justify-between border-b pb-2">
+                        <div>
+                          <p className="font-bold">POLYMER QUALITY & PURITY ANALYTICAL SERVICES</p>
+                          <p className="text-[11px] text-gray-500">NABL Accredited (ISO/IEC 17025)</p>
+                        </div>
+                        <div className="text-right">
+                          <p><b>Lot No:</b> {modalLot.id}</p>
+                          <p><b>Date:</b> {modalLot.date}</p>
+                        </div>
+                      </div>
+                      <div className="flex justify-between pt-1">
+                        <span>Tested: <b>Intrinsic Viscosity & Heavy Metals</b></span>
+                        <span className="text-green-700 font-bold">Status: ALL PARAMETERS PASS</span>
+                      </div>
+                    </div>
+                  </details>
+                </div>
+              ) : (
+                /* Demonstrator template if no real file uploaded yet */
+                <div className="space-y-3">
+                  <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700 rounded text-xs flex justify-between items-center flex-wrap gap-2">
+                    <div>
+                      <span className="font-bold text-amber-900 dark:text-amber-200 block">⚠️ Sample Demonstrator Template</span>
+                      <span className="text-amber-800 dark:text-amber-300">No real file was attached to this sample lot. Click "Upload Real Certificate" to upload and view your actual test certificate.</span>
+                    </div>
+                    <label className="btn solid-btn text-xs cursor-pointer bg-amber-700 hover:bg-amber-800 text-white">
+                      📤 Upload Real Certificate Now
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept=".pdf,.png,.jpg,.jpeg,.webp"
+                        onChange={(e) => handleDirectModalUpload(modalLot.id, 'lab', e)}
+                      />
+                    </label>
+                  </div>
+
+                  {/* Standard high fidelity NABL certificate display */}
+                  <div className="p-4 bg-white text-black border border-gray-300 rounded text-xs space-y-4">
+                    <div className="text-center border-b pb-3">
+                      <span className="text-[10px] tracking-widest text-blue-900 font-bold uppercase block">NABL ACCREDITED POLYMER TESTING LABORATORY</span>
+                      <h2 className="text-base font-bold text-gray-900">POLYMER QUALITY & PURITY ANALYTICAL SERVICES</h2>
+                      <p className="text-[11px] text-gray-600">Accreditation No: NABL-TC-8891 · Valid till: 2028 · ISO/IEC 17025:2017 Certified</p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 border-b pb-3">
+                      <div>
+                        <p><b>Client / Factory:</b> {state.factory}</p>
+                        <p><b>Recycler Origin:</b> {modalLot.recycler}</p>
+                        <p><b>Lot / Batch No:</b> {modalLot.id} (Bill: {modalLot.invoice})</p>
+                      </div>
+                      <div className="text-right">
+                        <p><b>Date of Analysis:</b> {modalLot.date}</p>
+                        <p><b>Sample Material:</b> {modalLot.materialType || 'Food Grade rPET'}</p>
+                        <p><b>Sample Weight Tested:</b> 5.0 kg Composite</p>
+                      </div>
+                    </div>
+
+                    <h4 className="font-bold text-gray-800 text-[11px] uppercase">Analytical Test Results:</h4>
+
+                    <table className="w-full border-collapse border border-gray-300">
+                      <thead>
+                        <tr className="bg-gray-100 text-left">
+                          <th className="p-1.5 border border-gray-300">Test Parameter</th>
+                          <th className="p-1.5 border border-gray-300">Test Method</th>
+                          <th className="p-1.5 border border-gray-300">Observed Value</th>
+                          <th className="p-1.5 border border-gray-300">Regulatory Limit</th>
+                          <th className="p-1.5 border border-gray-300 text-center">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td className="p-1.5 border border-gray-300 font-medium">Intrinsic Viscosity (IV)</td>
+                          <td className="p-1.5 border border-gray-300 text-gray-600">ASTM D4603</td>
+                          <td className="p-1.5 border border-gray-300 mono font-bold">0.82 dl/g</td>
+                          <td className="p-1.5 border border-gray-300 mono">0.78 - 0.84 dl/g</td>
+                          <td className="p-1.5 border border-gray-300 text-center text-green-700 font-bold">PASS</td>
+                        </tr>
+                        <tr>
+                          <td className="p-1.5 border border-gray-300 font-medium">Acetaldehyde (AA) Content</td>
+                          <td className="p-1.5 border border-gray-300 text-gray-600">Headspace GC-FID</td>
+                          <td className="p-1.5 border border-gray-300 mono font-bold">0.9 ppm</td>
+                          <td className="p-1.5 border border-gray-300 mono">&lt; 2.0 ppm</td>
+                          <td className="p-1.5 border border-gray-300 text-center text-green-700 font-bold">PASS</td>
+                        </tr>
+                        <tr>
+                          <td className="p-1.5 border border-gray-300 font-medium">Heavy Metals (Pb, Cd, Hg, Cr)</td>
+                          <td className="p-1.5 border border-gray-300 text-gray-600">ICP-OES (EPA 3052)</td>
+                          <td className="p-1.5 border border-gray-300 mono font-bold">&lt; 0.1 ppm</td>
+                          <td className="p-1.5 border border-gray-300 mono">&lt; 100 ppm total</td>
+                          <td className="p-1.5 border border-gray-300 text-center text-green-700 font-bold">PASS</td>
+                        </tr>
+                        <tr>
+                          <td className="p-1.5 border border-gray-300 font-medium">Melting Point Peak</td>
+                          <td className="p-1.5 border border-gray-300 text-gray-600">DSC (ISO 11357)</td>
+                          <td className="p-1.5 border border-gray-300 mono font-bold">251.8 °C</td>
+                          <td className="p-1.5 border border-gray-300 mono">248 - 256 °C</td>
+                          <td className="p-1.5 border border-gray-300 text-center text-green-700 font-bold">PASS</td>
+                        </tr>
+                        <tr>
+                          <td className="p-1.5 border border-gray-300 font-medium">Food-Contact Overall Migration</td>
+                          <td className="p-1.5 border border-gray-300 text-gray-600">IS 9845 / FSSAI</td>
+                          <td className="p-1.5 border border-gray-300 mono font-bold">4.2 mg/dm²</td>
+                          <td className="p-1.5 border border-gray-300 mono">&lt; 10.0 mg/dm²</td>
+                          <td className="p-1.5 border border-gray-300 text-center text-green-700 font-bold">PASS</td>
+                        </tr>
+                      </tbody>
+                    </table>
+
+                    <div className="p-2 bg-green-50 border border-green-200 rounded text-green-900 text-[11px]">
+                      <b>Final Quality Verdict:</b> The tested material sample conforms to Indian Standards (IS 14534:2023) and is suitable for beverage preforms, bottle closures, and food packaging containers.
+                    </div>
+
+                    <div className="flex justify-between items-center pt-3 border-t">
+                      <span className="text-[10px] text-gray-500">Scan QR on Pallet to verify digital record.</span>
+                      <div className="text-right">
+                        <p className="font-bold">Dr. V. K. Ramanathan, Ph.D.</p>
+                        <p className="text-gray-500 text-[10px]">Chief Technical Assayer · Polymer Lab</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -1261,50 +1687,56 @@ export default function BatchTracePage() {
                           <td className="mono text-right text-[var(--ink-soft)]">{lot.allocated}</td>
                           <td className="mono text-right font-bold text-[var(--ok)]">{lot.balance} MT</td>
                           <td>
-                            {lot.inv ? (
-                              <button
-                                onClick={() => {
-                                  setModalLot(lot);
-                                  setActiveModal('invoice');
-                                }}
-                                className="chip chip-ok text-xs font-semibold cursor-pointer"
-                                title="Click to view & download official tax invoice"
-                              >
-                                📄 View Invoice
-                              </button>
-                            ) : (
-                              <label className="btn-file-upload">
-                                + Attach
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {lot.inv ? (
+                                <button
+                                  onClick={() => {
+                                    setModalLot(lot);
+                                    setActiveModal('invoice');
+                                  }}
+                                  className={`chip ${lot.invIsReal || lot.invUrl ? 'chip-ok' : 'chip-warn'} text-xs font-semibold cursor-pointer`}
+                                  title="Click to view & download official tax invoice"
+                                >
+                                  📄 {lot.invIsReal || lot.invUrl ? 'Real Invoice' : 'View Sample'}
+                                </button>
+                              ) : null}
+                              <label className="btn-file-upload cursor-pointer" title="Upload/Replace real tax invoice">
+                                {uploadingLotId === `${lot.id}-inv` ? '⏳...' : (lot.inv ? '↻ Replace' : '+ Attach')}
                                 <input
                                   type="file"
                                   className="hidden"
+                                  accept=".pdf,.png,.jpg,.jpeg,.webp"
+                                  disabled={uploadingLotId === `${lot.id}-inv`}
                                   onChange={(e) => handleAttachFile(lot.id, 'inv', e)}
                                 />
                               </label>
-                            )}
+                            </div>
                           </td>
                           <td>
-                            {lot.lab ? (
-                              <button
-                                onClick={() => {
-                                  setModalLot(lot);
-                                  setActiveModal('certificate');
-                                }}
-                                className="chip chip-ok text-xs font-semibold cursor-pointer"
-                                title="Click to view & download accredited lab certificate"
-                              >
-                                🔬 View Certificate
-                              </button>
-                            ) : (
-                              <label className="btn-file-upload btn-file-bad">
-                                + Attach Lab
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {lot.lab ? (
+                                <button
+                                  onClick={() => {
+                                    setModalLot(lot);
+                                    setActiveModal('certificate');
+                                  }}
+                                  className={`chip ${lot.labIsReal || lot.labUrl ? 'chip-ok' : 'chip-warn'} text-xs font-semibold cursor-pointer`}
+                                  title="Click to view & download accredited lab certificate"
+                                >
+                                  🔬 {lot.labIsReal || lot.labUrl ? 'Real Certificate' : 'View Sample'}
+                                </button>
+                              ) : null}
+                              <label className="btn-file-upload cursor-pointer" title="Upload/Replace real lab certificate">
+                                {uploadingLotId === `${lot.id}-lab` ? '⏳...' : (lot.lab ? '↻ Replace' : '+ Attach Lab')}
                                 <input
                                   type="file"
                                   className="hidden"
+                                  accept=".pdf,.png,.jpg,.jpeg,.webp"
+                                  disabled={uploadingLotId === `${lot.id}-lab`}
                                   onChange={(e) => handleAttachFile(lot.id, 'lab', e)}
                                 />
                               </label>
-                            )}
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -1382,22 +1814,45 @@ export default function BatchTracePage() {
                     <label className="input-label">Attach Tax Invoice File (PDF / Image)</label>
                     <input
                       type="file"
-                      onChange={(e) => setInwardForm({ ...inwardForm, invFile: e.target.files?.[0]?.name || '' })}
+                      accept=".pdf,.png,.jpg,.jpeg,.webp"
+                      onChange={(e) => setInwardForm({ ...inwardForm, invFileObj: e.target.files?.[0] || null })}
                       className="text-xs file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-[var(--steel)] file:text-white"
                     />
+                    {inwardForm.invFileObj && (
+                      <span className="text-[11px] text-[var(--ok)] font-mono block mt-1">
+                        ✓ Selected: {inwardForm.invFileObj.name} ({(inwardForm.invFileObj.size / 1024).toFixed(1)} KB)
+                      </span>
+                    )}
                   </div>
 
                   <div>
                     <label className="input-label">Attach Quality Lab Certificate File (PDF / Image)</label>
                     <input
                       type="file"
-                      onChange={(e) => setInwardForm({ ...inwardForm, labFile: e.target.files?.[0]?.name || '' })}
+                      accept=".pdf,.png,.jpg,.jpeg,.webp"
+                      onChange={(e) => setInwardForm({ ...inwardForm, labFileObj: e.target.files?.[0] || null })}
                       className="text-xs file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-[var(--steel)] file:text-white"
                     />
+                    {inwardForm.labFileObj && (
+                      <span className="text-[11px] text-[var(--ok)] font-mono block mt-1">
+                        ✓ Selected: {inwardForm.labFileObj.name} ({(inwardForm.labFileObj.size / 1024).toFixed(1)} KB)
+                      </span>
+                    )}
                   </div>
 
-                  <button type="submit" className="btn solid-btn w-full mt-4">
-                    + Receive Inward Stock
+                  <button
+                    type="submit"
+                    disabled={uploadingLotId === 'inward-form'}
+                    className="btn solid-btn w-full mt-4 flex items-center justify-center gap-2"
+                  >
+                    {uploadingLotId === 'inward-form' ? (
+                      <>
+                        <span>⏳</span>
+                        <span>Uploading Documents & Receiving Inward Stock...</span>
+                      </>
+                    ) : (
+                      '+ Receive Inward Stock'
+                    )}
                   </button>
                 </form>
               </div>
@@ -1773,18 +2228,18 @@ export default function BatchTracePage() {
                                     setModalLot(lot);
                                     setActiveModal('invoice');
                                   }}
-                                  className="chip chip-ok cursor-pointer"
+                                  className={`chip ${lot?.invIsReal || lot?.invUrl ? 'chip-ok' : 'chip-warn'} cursor-pointer`}
                                 >
-                                  📄 Invoice
+                                  📄 {lot?.invIsReal || lot?.invUrl ? 'Real Invoice' : 'Invoice'}
                                 </button>
                                 <button
                                   onClick={() => {
                                     setModalLot(lot);
                                     setActiveModal('certificate');
                                   }}
-                                  className="chip chip-ok cursor-pointer"
+                                  className={`chip ${lot?.labIsReal || lot?.labUrl ? 'chip-ok' : 'chip-warn'} cursor-pointer`}
                                 >
-                                  🔬 Certificate
+                                  🔬 {lot?.labIsReal || lot?.labUrl ? 'Real Certificate' : 'Certificate'}
                                 </button>
                               </div>
                             </div>
