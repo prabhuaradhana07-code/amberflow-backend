@@ -17,6 +17,9 @@ export const metadata = {
     template: '%s | AmberFlow',
   },
   description: 'Discover the finest organic honey, sustainably harvested from Indian farms. Pure, raw, and full of nature\'s golden goodness.',
+  other: {
+    'google-adsense-account': 'ca-pub-1553785773930597',
+  },
   openGraph: {
     title: 'AmberFlow | Premium Organic Honey',
     description: 'Discover the finest organic honey, sustainably harvested from Indian farms. Pure, raw, and full of nature\'s golden goodness.',
@@ -55,6 +58,13 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en" className="scroll-smooth" data-scroll-behavior="smooth">
+      <head>
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1553785773930597"
+          crossOrigin="anonymous"
+        />
+      </head>
       <body
         className={`${inter.variable} ${playfair.variable} font-sans mesh-bg text-gray-100 antialiased`}
       >
