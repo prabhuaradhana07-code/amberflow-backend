@@ -154,7 +154,31 @@ async function migrate() {
     `);
     console.log('✅  promo_usage table ready');
 
-    console.log('\n🎉 Migration complete – all tables are up to date.');
+    // ── Supabase Security Advisor Hardening (RLS & Access Control) ─
+    console.log('\n🔒 Enforcing Row Level Security & Access Control for Supabase...');
+    const tables = [
+      'users',
+      'vendor_details',
+      'products',
+      'orders',
+      'order_items',
+      'reviews',
+      'password_reset_codes',
+      'promo_usage'
+    ];
+
+    for (const table of tables) {
+      await client.query(`ALTER TABLE public.${table} ENABLE ROW LEVEL SECURITY;`);
+    }
+    await client.query(`REVOKE ALL ON ALL TABLES IN SCHEMA public FROM anon, authenticated;`);
+    await client.query(`REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM anon, authenticated;`);
+    await client.query(`REVOKE ALL ON ALL ROUTINES IN SCHEMA public FROM anon, authenticated;`);
+    await client.query(`ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON TABLES FROM anon, authenticated;`);
+    await client.query(`ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON SEQUENCES FROM anon, authenticated;`);
+    await client.query(`ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON ROUTINES FROM anon, authenticated;`);
+    console.log('✅  Row Level Security enabled and unauthorized PostgREST access blocked.');
+
+    console.log('\n🎉 Migration complete – all tables are up to date and hardened.');
   } catch (err) {
     console.error('❌ Migration failed:', err.message);
     process.exit(1);

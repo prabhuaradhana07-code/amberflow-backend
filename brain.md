@@ -60,6 +60,7 @@ The system supports three distinct roles (`users.role`):
 - **SSRF Prevention:** Next.js image remotePatterns locked to explicit trusted domains (Unsplash, Render backend, AmberFlow).
 - **CSP Directives:** Enforced with `frame-ancestors 'self'; base-uri 'self'; object-src 'none';`.
 - **CSV Injection:** Sanitized formula trigger characters (`=`, `+`, `-`, `@`) in admin CSV exports.
+- **Supabase Database Hardening (RLS & PostgREST Access):** All public tables (`users`, `vendor_details`, `password_reset_codes`, `orders`, `order_items`, `products`, `reviews`, `promo_usage`) have Row Level Security (`RLS`) enabled, and all direct privileges have been revoked from `anon` and `authenticated` roles. This eliminates the vulnerability where public PostgREST API endpoints could expose sensitive tables. Backend queries continue uninterrupted via the `postgres` pool.
 
 ## 5. Third-Party Integrations & Tools
 - **Nodemailer:** Uses a Gmail App Password for transactional emails.
